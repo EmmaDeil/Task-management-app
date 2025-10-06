@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,7 +26,7 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
       // Determine user role and organization based on email
       let userRole = "member";
       let orgName = "Demo Organization";
-      
+
       if (data.email === "admin@demo.com") {
         userRole = "admin";
         orgName = "TechCorp Solutions";
@@ -44,10 +46,11 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
         id: 1,
         name: orgName,
         plan: "pro",
-        domain: orgName.toLowerCase().replace(/\s+/g, '-')
+        domain: orgName.toLowerCase().replace(/\s+/g, "-"),
       };
 
       login(mockUser, mockOrganization);
+      navigate("/dashboard");
     } catch {
       setError("Invalid credentials. Please try again.");
     } finally {
@@ -74,8 +77,8 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
             id: 1,
             name: "TechCorp Solutions",
             plan: "enterprise",
-            domain: "techcorp-solutions"
-          }
+            domain: "techcorp-solutions",
+          },
         },
         manager: {
           user: {
@@ -88,8 +91,8 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
             id: 2,
             name: "Creative Agency",
             plan: "pro",
-            domain: "creative-agency"
-          }
+            domain: "creative-agency",
+          },
         },
         member: {
           user: {
@@ -102,13 +105,14 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
             id: 3,
             name: "Startup Hub",
             plan: "free",
-            domain: "startup-hub"
-          }
-        }
+            domain: "startup-hub",
+          },
+        },
       };
 
       const demoAccount = demoAccounts[demoType];
       login(demoAccount.user, demoAccount.organization);
+      navigate("/dashboard");
     } catch {
       setError("Demo login failed. Please try again.");
     } finally {
@@ -176,32 +180,34 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
         <div className="demo-section">
           <p className="demo-title">Try Demo Accounts:</p>
           <div className="demo-buttons">
-            <button 
+            <button
               type="button"
-              onClick={() => handleDemoLogin('admin')}
+              onClick={() => handleDemoLogin("admin")}
               disabled={isLoading}
               className="btn demo-btn admin"
             >
               Admin Demo
             </button>
-            <button 
+            <button
               type="button"
-              onClick={() => handleDemoLogin('manager')}
+              onClick={() => handleDemoLogin("manager")}
               disabled={isLoading}
               className="btn demo-btn manager"
             >
               Manager Demo
             </button>
-            <button 
+            <button
               type="button"
-              onClick={() => handleDemoLogin('member')}
+              onClick={() => handleDemoLogin("member")}
               disabled={isLoading}
               className="btn demo-btn member"
             >
               Member Demo
             </button>
           </div>
-          <p className="demo-info">No registration required - explore all features!</p>
+          <p className="demo-info">
+            No registration required - explore all features!
+          </p>
         </div>
 
         <div className="auth-links">

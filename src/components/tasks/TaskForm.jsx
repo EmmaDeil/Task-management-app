@@ -2,11 +2,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../../hooks/useAuth";
 
-const TaskForm = ({
-  onSubmit,
-  onCancel,
-  task = null,
-}) => {
+const TaskForm = ({ onSubmit, onCancel, task = null }) => {
   const { user } = useAuth();
   const isEditing = !!task;
 

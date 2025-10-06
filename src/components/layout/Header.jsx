@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
 
 const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   const { user, organization, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const notificationRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const notifications = [
     { id: 1, text: "New task assigned to you", time: "5m ago", unread: true },
@@ -23,6 +26,28 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   ];
 
   const unreadCount = notifications.filter((n) => n.unread).length;
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        setShowNotifications(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showNotifications || showUserMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotifications, showUserMenu]);
 
   const handleLogout = () => {
     logout();
@@ -65,7 +90,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
 
       <div className="header-right">
         <div className="header-actions">
-          <div className="notification-wrapper">
+          <div className="notification-wrapper" ref={notificationRef}>
             <button
               className="notification-btn"
               onClick={() => setShowNotifications(!showNotifications)}
@@ -103,7 +128,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
             )}
           </div>
 
-          <div className="user-menu-wrapper">
+          <div className="user-menu-wrapper" ref={userMenuRef}>
             <button
               className="user-menu-trigger"
               onClick={() => setShowUserMenu(!showUserMenu)}
@@ -113,7 +138,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                 {user?.name?.charAt(0).toUpperCase()}
               </div>
               <span className="user-name">{user?.name}</span>
-              <span className="dropdown-arrow">▼</span>
+              {/* <span className="dropdown-arrow">▼</span> */}
             </button>
 
             {showUserMenu && (

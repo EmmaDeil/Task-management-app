@@ -45,7 +45,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <h1>Welcome back, {user?.name}!</h1>
+        <h1>Welcome back, {user?.name}</h1>
         <p>Here's what's happening with your projects today.</p>
       </div>
 

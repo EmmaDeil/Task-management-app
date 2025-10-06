@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 const OrganizationSignup = ({ onSwitchToLogin }) => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState(1); // 1: org details, 2: admin user
@@ -41,6 +43,7 @@ const OrganizationSignup = ({ onSwitchToLogin }) => {
       };
 
       login(mockAdminUser, mockOrganization);
+      navigate("/dashboard");
     } catch {
       setError("Failed to create organization. Please try again.");
     } finally {

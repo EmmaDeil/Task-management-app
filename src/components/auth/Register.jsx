@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 const Register = ({ onSwitchToLogin }) => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -15,6 +17,7 @@ const Register = ({ onSwitchToLogin }) => {
   } = useForm();
 
   const password = watch("password");
+  const watchedName = watch("name");
 
   const onSubmit = async (data) => {
     setIsLoading(true);
@@ -37,6 +40,7 @@ const Register = ({ onSwitchToLogin }) => {
       const mockOrganization = null;
 
       login(mockUser, mockOrganization);
+      navigate("/dashboard");
     } catch {
       setError("Registration failed. Please try again.");
     } finally {
@@ -47,8 +51,12 @@ const Register = ({ onSwitchToLogin }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Create Account</h2>
-        <p className="auth-subtitle">Join TaskFlow today</p>
+        <h2>{watchedName ? `Welcome, ${watchedName}!` : "Create Account"}</h2>
+        <p className="auth-subtitle">
+          {watchedName
+            ? "Complete your registration below"
+            : "Join TaskFlow today"}
+        </p>
 
         {error && <div className="error-message">{error}</div>}
 

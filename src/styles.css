@@ -168,9 +168,16 @@ body {
   gap: 1rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
 /* Notification Dropdown */
 .notification-wrapper {
   position: relative;
+  margin-top: 0.4rem;
 }
 
 .notification-btn {
@@ -206,6 +213,7 @@ body {
   position: absolute;
   top: 100%;
   right: 0;
+  margin-top: 1rem;
   width: 320px;
   background: var(--surface-color);
   border: 1px solid var(--border-color);
@@ -216,10 +224,20 @@ body {
   overflow-y: auto;
 }
 
+@media (max-width: 400px) {
+  .notification-dropdown {
+   margin-top: 1rem;
+    width: 13rem;
+    right: 1;
+    left: 0;
+  }
+}
+
 .notification-header {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
   display: flex;
+  gap: 1.5rem;
   justify-content: space-between;
   align-items: center;
 }
@@ -234,7 +252,7 @@ body {
   border: none;
   color: var(--primary-color);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.5rem;
 }
 
 .notification-list {
@@ -271,6 +289,18 @@ body {
 /* User Menu */
 .user-menu-wrapper {
   position: relative;
+}
+
+@media (max-width: 400px) {
+  .user-menu-wrapper {
+   margin-top: 1.2rem;
+    width: 10rem;
+    right: 0;
+    left: 0;
+  }
+  .notification-wrapper {
+    margin-top: 1.2rem;
+  }
 }
 
 .user-menu-trigger {
@@ -326,9 +356,10 @@ body {
 
 .user-dropdown {
   position: absolute;
+  margin-top: 0.6rem;
   top: 100%;
   right: 0;
-  width: 240px;
+  width: 220px;
   background: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
