@@ -35,52 +35,92 @@ A comprehensive task management application designed for organizations to effici
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React 19, Redux Toolkit, React Router
-- **Styling**: Custom CSS with CSS Variables, Responsive Design
-- **Forms**: React Hook Form for efficient form handling
-- **State Management**: Redux Toolkit with organized slices
-- **Build Tool**: Vite for fast development and building
-- **Code Quality**: ESLint for code linting
+### Frontend
+- **React 19**: Modern React with hooks and functional components
+- **Redux Toolkit**: State management with organized slices
+- **React Router**: Client-side routing with protected routes
+- **React Hook Form**: Efficient form handling with validation
+- **Vite**: Fast development server and build tool
+- **Custom CSS**: Responsive design with CSS Variables
+
+### Backend
+- **Node.js & Express**: RESTful API server
+- **MongoDB & Mongoose**: NoSQL database with schema validation
+- **JWT**: Secure token-based authentication
+- **Bcryptjs**: Password hashing and security
+- **CORS**: Cross-origin resource sharing support
+
+### Development Tools
+- **ESLint**: Code quality and linting
+- **Nodemon**: Auto-restart backend server during development
 
 ## 📁 Project Structure
 
 ```
-src/
-├── components/
-│   ├── auth/                    # Authentication components
-│   │   ├── AuthProvider.jsx     # Authentication context
-│   │   ├── Login.jsx           # Login form
-│   │   ├── Register.jsx        # User registration
-│   │   └── OrganizationSignup.jsx # Organization creation
-│   ├── layout/                 # Layout components
-│   │   ├── Header.jsx          # Application header
-│   │   ├── Sidebar.jsx         # Navigation sidebar
-│   │   └── Layout.jsx          # Main layout wrapper
-│   ├── organization/           # Organization management
-│   │   └── OrganizationDashboard.jsx # Org admin panel
-│   ├── tasks/                  # Task management components
-│   │   ├── TaskBoard.jsx       # Kanban board
-│   │   ├── TaskCard.jsx        # Individual task cards
-│   │   ├── TaskForm.jsx        # Task creation/editing
-│   │   └── TaskDetails.jsx     # Task detail modal
-│   └── users/                  # User management
-│       ├── UserProfile.jsx     # User profile page
-│       └── UserList.jsx        # Team member list
-├── routes/                     # Route components
-│   ├── AuthPage.jsx           # Authentication page
-│   ├── Dashboard.jsx          # Main dashboard
-│   └── ProtectedRoute.jsx     # Route protection
-├── store/                      # Redux store
-│   └── index.js               # Store configuration
-├── App.jsx                     # Main application component
-├── main.jsx                    # Application entry point
-└── styles.css                  # Global styles
+Task-management-app/
+├── src/                        # Frontend source code
+│   ├── components/
+│   │   ├── auth/              # Authentication components
+│   │   │   ├── AuthProvider.jsx     # Authentication context
+│   │   │   ├── Login.jsx           # Login form
+│   │   │   ├── Register.jsx        # User registration
+│   │   │   └── OrganizationSignup.jsx # Organization creation
+│   │   ├── layout/            # Layout components
+│   │   │   ├── Header.jsx          # Application header
+│   │   │   ├── Sidebar.jsx         # Navigation sidebar
+│   │   │   └── Layout.jsx          # Main layout wrapper
+│   │   ├── organization/      # Organization management
+│   │   │   └── OrganizationDashboard.jsx # Org admin panel
+│   │   ├── tasks/             # Task management components
+│   │   │   ├── TaskBoard.jsx       # Kanban board
+│   │   │   ├── TaskCard.jsx        # Individual task cards
+│   │   │   ├── TaskForm.jsx        # Task creation/editing
+│   │   │   └── TaskDetails.jsx     # Task detail modal
+│   │   └── users/             # User management
+│   │       ├── UserProfile.jsx     # User profile page
+│   │       └── UserList.jsx        # Team member list
+│   ├── routes/                # Route components
+│   │   ├── AuthPage.jsx       # Authentication page
+│   │   ├── Dashboard.jsx      # Main dashboard
+│   │   └── ProtectedRoute.jsx # Route protection
+│   ├── services/              # API service layer
+│   │   └── api.js             # Axios instance & API methods
+│   ├── slices/                # Redux slices
+│   ├── store.js               # Redux store configuration
+│   ├── App.jsx                # Main application component
+│   ├── main.jsx               # Application entry point
+│   └── styles.css             # Global styles
+├── server/                     # Backend source code
+│   ├── config/
+│   │   └── db.js              # MongoDB connection
+│   ├── middleware/
+│   │   └── auth.js            # JWT authentication middleware
+│   ├── models/                # Mongoose schemas
+│   │   ├── Organization.js    # Organization model
+│   │   ├── Task.js            # Task model
+│   │   └── User.js            # User model with bcrypt
+│   ├── routes/                # Express routes
+│   │   ├── auth.js            # Authentication endpoints
+│   │   ├── organizations.js   # Organization management
+│   │   ├── tasks.js           # Task CRUD & comments
+│   │   └── users.js           # User management
+│   ├── .env                   # Backend environment variables
+│   └── server.js              # Express server setup
+├── public/                     # Static assets
+├── .env                        # Frontend environment variables
+├── .gitignore                 # Git ignore rules
+├── package.json               # Dependencies & scripts
+├── vite.config.js             # Vite configuration
+├── README.md                  # This file
+├── NEXT_STEPS.md              # Setup instructions
+└── BACKEND_SETUP_GUIDE.md     # Detailed backend guide
 ```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ and npm
+- **Node.js 18+** and npm
+- **MongoDB** (local installation or MongoDB Atlas account)
 - Modern web browser
 
 ### Installation
@@ -96,13 +136,35 @@ src/
    npm install
    ```
 
-3. **Start the development server**
+3. **Setup MongoDB**
+   - **Option A:** Install MongoDB locally from https://www.mongodb.com/try/download/community
+   - **Option B:** Create free MongoDB Atlas account at https://www.mongodb.com/cloud/atlas
+
+4. **Configure environment variables**
+   
+   Environment files are already created:
+   - Frontend: `.env`
+   - Backend: `server/.env`
+   
+   ⚠️ **Important:** Update `JWT_SECRET` in `server/.env` to a secure random string!
+
+5. **Start the backend server** (in one terminal)
+   ```bash
+   npm run server:dev
+   ```
+
+6. **Start the frontend** (in another terminal)
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**
+7. **Open your browser**
    Navigate to `http://localhost:5173`
+
+8. **Create your first organization**
+   - Sign up for an organization through the app
+   - This creates your organization and admin account
+   - Start creating tasks and inviting team members!
 
 ### Building for Production
 

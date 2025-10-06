@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import { useAuth } from "../../hooks/useAuth";
 
 const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   const { user, organization, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
 
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
+  const searchRef = useRef(null);
 
+  // Get tasks from Redux store
+  const tasks = useSelector((state) => state.tasks.items);
   const notifications = [
     { id: 1, text: "New task assigned to you", time: "5m ago", unread: true },
     {
@@ -27,6 +34,31 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
+  // Handle search
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = tasks.filter((task) => {
+      return (
+        task.title?.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query) ||
+        task.assignee?.toLowerCase().includes(query) ||
+        task.priority?.toLowerCase().includes(query) ||
+        task.status?.toLowerCase().includes(query) ||
+        task.project?.toLowerCase().includes(query)
+      );
+    });
+
+    setSearchResults(filtered);
+    setShowSearchResults(true);
+  }, [searchQuery, tasks]);
+
+  // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -38,16 +70,49 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchResults(false);
+      }
     };
 
-    if (showNotifications || showUserMenu) {
+    if (showNotifications || showUserMenu || showSearchResults) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showNotifications, showUserMenu]);
+  }, [showNotifications, showUserMenu, showSearchResults]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+  };
+
+  const handleSearchClear = () => {
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearchResults(false);
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      todo: "#6b7280",
+      "in-progress": "#f59e0b",
+      review: "#8b5cf6",
+      done: "#10b981",
+    };
+    return colors[status] || "#6b7280";
+  };
+
+  const getPriorityIcon = (priority) => {
+    const icons = {
+      low: "🟢",
+      medium: "🟡",
+      high: "🟠",
+      urgent: "🔴",
+    };
+    return icons[priority] || "⚪";
+  };
 
   const handleLogout = () => {
     logout();
@@ -78,13 +143,101 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
       </div>
 
       <div className="header-center">
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="Search tasks, projects, or people..."
-            className="search-input"
-          />
-          <button className="search-btn">🔍</button>
+        <div className="search-bar" ref={searchRef}>
+          <form onSubmit={handleSearchSubmit}>
+            <input
+              type="text"
+              placeholder="Search tasks, projects, or people..."
+              className="search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery && setShowSearchResults(true)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="search-clear-btn"
+                onClick={handleSearchClear}
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+            <button type="submit" className="search-btn" aria-label="Search">
+              🔍
+            </button>
+          </form>
+
+          {showSearchResults && (
+            <div className="search-dropdown">
+              <div className="search-dropdown-header">
+                <h3>Search Results</h3>
+                <span className="search-count">
+                  {searchResults.length}{" "}
+                  {searchResults.length === 1 ? "task" : "tasks"} found
+                </span>
+              </div>
+
+              {searchResults.length > 0 ? (
+                <div className="search-results-list">
+                  {searchResults.map((task) => (
+                    <div key={task.id} className="search-result-item">
+                      <div className="search-result-header">
+                        <span className="search-result-priority">
+                          {getPriorityIcon(task.priority)}
+                        </span>
+                        <h4 className="search-result-title">{task.title}</h4>
+                      </div>
+
+                      {task.description && (
+                        <p className="search-result-description">
+                          {task.description}
+                        </p>
+                      )}
+
+                      <div className="search-result-meta">
+                        <span
+                          className="search-result-status"
+                          style={{
+                            backgroundColor: getStatusColor(task.status),
+                            color: "white",
+                            padding: "0.2rem 0.5rem",
+                            borderRadius: "4px",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          {task.status?.replace("-", " ")}
+                        </span>
+
+                        {task.assignee && (
+                          <span className="search-result-assignee">
+                            👤 {task.assignee}
+                          </span>
+                        )}
+
+                        {task.project && (
+                          <span className="search-result-project">
+                            📁 {task.project}
+                          </span>
+                        )}
+
+                        {task.dueDate && (
+                          <span className="search-result-date">
+                            📅 {new Date(task.dueDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="search-no-results">
+                  <p>No tasks found matching "{searchQuery}"</p>
+                  <small>Try different keywords or check your spelling</small>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

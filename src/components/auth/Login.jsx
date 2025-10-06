@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { authAPI } from "../../services/api";
 
 const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
   const { login } = useAuth();
@@ -20,101 +21,19 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
     setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Call real API
+      const response = await authAPI.login(data.email, data.password);
 
-      // Determine user role and organization based on email
-      let userRole = "member";
-      let orgName = "Demo Organization";
+      // Store token
+      localStorage.setItem("token", response.token);
 
-      if (data.email === "admin@demo.com") {
-        userRole = "admin";
-        orgName = "TechCorp Solutions";
-      } else if (data.email === "manager@demo.com") {
-        userRole = "manager";
-        orgName = "Creative Agency";
-      }
-
-      const mockUser = {
-        id: Date.now(),
-        email: data.email,
-        name: data.email.split("@")[0],
-        role: userRole,
-      };
-
-      const mockOrganization = {
-        id: 1,
-        name: orgName,
-        plan: "pro",
-        domain: orgName.toLowerCase().replace(/\s+/g, "-"),
-      };
-
-      login(mockUser, mockOrganization);
+      // Update auth context
+      login(response.user, response.user.organization);
       navigate("/dashboard");
-    } catch {
-      setError("Invalid credentials. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (demoType) => {
-    setIsLoading(true);
-    setError("");
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      const demoAccounts = {
-        admin: {
-          user: {
-            id: 1,
-            email: "admin@demo.com",
-            name: "Admin User",
-            role: "admin",
-          },
-          organization: {
-            id: 1,
-            name: "TechCorp Solutions",
-            plan: "enterprise",
-            domain: "techcorp-solutions",
-          },
-        },
-        manager: {
-          user: {
-            id: 2,
-            email: "manager@demo.com",
-            name: "Project Manager",
-            role: "manager",
-          },
-          organization: {
-            id: 2,
-            name: "Creative Agency",
-            plan: "pro",
-            domain: "creative-agency",
-          },
-        },
-        member: {
-          user: {
-            id: 3,
-            email: "member@demo.com",
-            name: "Team Member",
-            role: "member",
-          },
-          organization: {
-            id: 3,
-            name: "Startup Hub",
-            plan: "free",
-            domain: "startup-hub",
-          },
-        },
-      };
-
-      const demoAccount = demoAccounts[demoType];
-      login(demoAccount.user, demoAccount.organization);
-      navigate("/dashboard");
-    } catch {
-      setError("Demo login failed. Please try again.");
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Invalid credentials. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -176,39 +95,6 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
             {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
-
-        <div className="demo-section">
-          <p className="demo-title">Try Demo Accounts:</p>
-          <div className="demo-buttons">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("admin")}
-              disabled={isLoading}
-              className="btn demo-btn admin"
-            >
-              Admin Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("manager")}
-              disabled={isLoading}
-              className="btn demo-btn manager"
-            >
-              Manager Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("member")}
-              disabled={isLoading}
-              className="btn demo-btn member"
-            >
-              Member Demo
-            </button>
-          </div>
-          <p className="demo-info">
-            No registration required - explore all features!
-          </p>
-        </div>
 
         <div className="auth-links">
           <p>

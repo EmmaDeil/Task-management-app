@@ -1,0 +1,157 @@
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+// Create axios instance
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Add auth token to requests
+api.interceptors.request.use(
+  (config) => {
+    const auth = localStorage.getItem("auth");
+    if (auth) {
+      const { token } = JSON.parse(auth);
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Handle response errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth and redirect to login
+      localStorage.removeItem("auth");
+      window.location.href = "/auth";
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const authAPI = {
+  login: async (email, password) => {
+    const response = await api.post("/auth/login", { email, password });
+    return response.data;
+  },
+
+  register: async (name, email, password, organizationId) => {
+    const response = await api.post("/auth/register", {
+      name,
+      email,
+      password,
+      organizationId,
+    });
+    return response.data;
+  },
+
+  registerOrganization: async (
+    organizationName,
+    domain,
+    name,
+    email,
+    password
+  ) => {
+    const response = await api.post("/auth/organization/register", {
+      organizationName,
+      domain,
+      name,
+      email,
+      password,
+    });
+    return response.data;
+  },
+
+  getMe: async () => {
+    const response = await api.get("/auth/me");
+    return response.data;
+  },
+};
+
+// Tasks API
+export const tasksAPI = {
+  getAll: async (filters = {}) => {
+    const response = await api.get("/tasks", { params: filters });
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/tasks/${id}`);
+    return response.data;
+  },
+
+  create: async (taskData) => {
+    const response = await api.post("/tasks", taskData);
+    return response.data;
+  },
+
+  update: async (id, taskData) => {
+    const response = await api.put(`/tasks/${id}`, taskData);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/tasks/${id}`);
+    return response.data;
+  },
+
+  addComment: async (id, text) => {
+    const response = await api.post(`/tasks/${id}/comments`, { text });
+    return response.data;
+  },
+};
+
+// Organizations API
+export const organizationsAPI = {
+  getById: async (id) => {
+    const response = await api.get(`/organizations/${id}`);
+    return response.data;
+  },
+
+  update: async (id, orgData) => {
+    const response = await api.put(`/organizations/${id}`, orgData);
+    return response.data;
+  },
+
+  getUsers: async (id) => {
+    const response = await api.get(`/organizations/${id}/users`);
+    return response.data;
+  },
+};
+
+// Users API
+export const usersAPI = {
+  getAll: async () => {
+    const response = await api.get("/users");
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/users/${id}`);
+    return response.data;
+  },
+
+  update: async (id, userData) => {
+    const response = await api.put(`/users/${id}`, userData);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/users/${id}`);
+    return response.data;
+  },
+};
+
+export default api;

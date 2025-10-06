@@ -1,8 +1,100 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useDispatch } from "react-redux";
 import { useAuth } from "../hooks/useAuth";
 
 const Dashboard = () => {
   const { user, organization } = useAuth();
+  const dispatch = useDispatch();
+
+  // Add sample tasks on first load for demo purposes
+  useEffect(() => {
+    const sampleTasks = [
+      {
+        title: "Review pull request #234",
+        description:
+          "Review the authentication refactoring PR and provide feedback",
+        status: "in-progress",
+        priority: "high",
+        assignee: user?.name || "John Doe",
+        project: "Authentication Module",
+        dueDate: "2025-10-10",
+      },
+      {
+        title: "Update API documentation",
+        description:
+          "Update REST API docs with new endpoints and authentication flow",
+        status: "todo",
+        priority: "medium",
+        assignee: "Sarah Johnson",
+        project: "Documentation",
+        dueDate: "2025-10-12",
+      },
+      {
+        title: "Fix login bug",
+        description:
+          "Users are experiencing issues with SSO login on mobile devices",
+        status: "review",
+        priority: "urgent",
+        assignee: "Mike Chen",
+        project: "Bug Fixes",
+        dueDate: "2025-10-08",
+      },
+      {
+        title: "Design new dashboard layout",
+        description: "Create mockups for the redesigned admin dashboard",
+        status: "todo",
+        priority: "low",
+        assignee: "Emily Davis",
+        project: "UI/UX Design",
+        dueDate: "2025-10-15",
+      },
+      {
+        title: "Implement dark mode",
+        description: "Add dark mode toggle and theme switching functionality",
+        status: "in-progress",
+        priority: "medium",
+        assignee: user?.name || "John Doe",
+        project: "Features",
+        dueDate: "2025-10-14",
+      },
+      {
+        title: "Optimize database queries",
+        description: "Improve performance of user search and filtering queries",
+        status: "done",
+        priority: "high",
+        assignee: "Alex Turner",
+        project: "Performance",
+        dueDate: "2025-10-05",
+      },
+      {
+        title: "Setup CI/CD pipeline",
+        description: "Configure automated testing and deployment pipeline",
+        status: "todo",
+        priority: "high",
+        assignee: "DevOps Team",
+        project: "Infrastructure",
+        dueDate: "2025-10-20",
+      },
+      {
+        title: "Client presentation preparation",
+        description:
+          "Prepare slides and demo for the quarterly client review meeting",
+        status: "in-progress",
+        priority: "urgent",
+        assignee: "Marketing Team",
+        project: "Client Relations",
+        dueDate: "2025-10-09",
+      },
+    ];
+
+    // Only add tasks if there are none in the store
+    const existingTasks = localStorage.getItem("redux_tasks");
+    if (!existingTasks || JSON.parse(existingTasks).length === 0) {
+      sampleTasks.forEach((task) => {
+        dispatch({ type: "tasks/addTask", payload: task });
+      });
+    }
+  }, [dispatch, user]);
 
   const mockStats = {
     myTasks: 8,
