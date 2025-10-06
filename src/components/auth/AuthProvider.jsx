@@ -1,34 +1,34 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useReducer, useEffect } from 'react';
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 const authReducer = (state, action) => {
   switch (action.type) {
-    case 'LOGIN':
+    case "LOGIN":
       return {
         ...state,
         isAuthenticated: true,
         user: action.payload.user,
         organization: action.payload.organization,
-        loading: false
+        loading: false,
       };
-    case 'LOGOUT':
+    case "LOGOUT":
       return {
         ...state,
         isAuthenticated: false,
         user: null,
         organization: null,
-        loading: false
+        loading: false,
       };
-    case 'SET_LOADING':
+    case "SET_LOADING":
       return {
         ...state,
-        loading: action.payload
+        loading: action.payload,
       };
-    case 'SET_ORGANIZATION':
+    case "SET_ORGANIZATION":
       return {
         ...state,
-        organization: action.payload
+        organization: action.payload,
       };
     default:
       return state;
@@ -39,7 +39,7 @@ const initialState = {
   isAuthenticated: false,
   user: null,
   organization: null,
-  loading: true
+  loading: true,
 };
 
 export const AuthProvider = ({ children }) => {
@@ -47,54 +47,42 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check for existing session
-    const storedAuth = localStorage.getItem('auth');
+    const storedAuth = localStorage.getItem("auth");
     if (storedAuth) {
       try {
         const authData = JSON.parse(storedAuth);
-        dispatch({ type: 'LOGIN', payload: authData });
-      } catch (error) {
-        localStorage.removeItem('auth');
+        dispatch({ type: "LOGIN", payload: authData });
+      } catch {
+        localStorage.removeItem("auth");
       }
     }
-    dispatch({ type: 'SET_LOADING', payload: false });
+    dispatch({ type: "SET_LOADING", payload: false });
   }, []);
 
   const login = (userData, orgData) => {
     const authData = { user: userData, organization: orgData };
-    localStorage.setItem('auth', JSON.stringify(authData));
-    dispatch({ type: 'LOGIN', payload: authData });
+    localStorage.setItem("auth", JSON.stringify(authData));
+    dispatch({ type: "LOGIN", payload: authData });
   };
 
   const logout = () => {
-    localStorage.removeItem('auth');
-    dispatch({ type: 'LOGOUT' });
+    localStorage.removeItem("auth");
+    dispatch({ type: "LOGOUT" });
   };
 
   const setOrganization = (orgData) => {
-    const currentAuth = JSON.parse(localStorage.getItem('auth') || '{}');
+    const currentAuth = JSON.parse(localStorage.getItem("auth") || "{}");
     const updatedAuth = { ...currentAuth, organization: orgData };
-    localStorage.setItem('auth', JSON.stringify(updatedAuth));
-    dispatch({ type: 'SET_ORGANIZATION', payload: orgData });
+    localStorage.setItem("auth", JSON.stringify(updatedAuth));
+    dispatch({ type: "SET_ORGANIZATION", payload: orgData });
   };
 
   const value = {
     ...state,
     login,
     logout,
-    setOrganization
+    setOrganization,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

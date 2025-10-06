@@ -1,37 +1,37 @@
-import React, { useState } from 'react';
-import { useAuth } from '../auth/AuthProvider';
+import React, { useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
 
 const UserProfile = () => {
   const { user, organization } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    bio: '',
-    department: '',
-    phoneNumber: ''
+    name: user?.name || "",
+    email: user?.email || "",
+    bio: "",
+    department: "",
+    phoneNumber: "",
   });
 
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSave = () => {
     // In a real app, this would make an API call
-    console.log('Saving user profile:', formData);
+    console.log("Saving user profile:", formData);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || '',
-      email: user?.email || '',
-      bio: '',
-      department: '',
-      phoneNumber: ''
+      name: user?.name || "",
+      email: user?.email || "",
+      bio: "",
+      department: "",
+      phoneNumber: "",
     });
     setIsEditing(false);
   };
@@ -70,7 +70,7 @@ const UserProfile = () => {
       <div className="profile-content">
         <div className="profile-section">
           <h3>Personal Information</h3>
-          
+
           <div className="form-group">
             <label>Full Name</label>
             {isEditing ? (
@@ -81,7 +81,7 @@ const UserProfile = () => {
                 onChange={handleInputChange}
               />
             ) : (
-              <p>{formData.name || 'Not specified'}</p>
+              <p>{formData.name || "Not specified"}</p>
             )}
           </div>
 
@@ -110,7 +110,7 @@ const UserProfile = () => {
                 placeholder="Enter phone number"
               />
             ) : (
-              <p>{formData.phoneNumber || 'Not specified'}</p>
+              <p>{formData.phoneNumber || "Not specified"}</p>
             )}
           </div>
 
@@ -125,7 +125,7 @@ const UserProfile = () => {
                 placeholder="e.g., Engineering, Marketing, Sales"
               />
             ) : (
-              <p>{formData.department || 'Not specified'}</p>
+              <p>{formData.department || "Not specified"}</p>
             )}
           </div>
 
@@ -140,7 +140,7 @@ const UserProfile = () => {
                 rows="4"
               />
             ) : (
-              <p>{formData.bio || 'No bio provided'}</p>
+              <p>{formData.bio || "No bio provided"}</p>
             )}
           </div>
         </div>

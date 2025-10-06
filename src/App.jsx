@@ -1,70 +1,174 @@
-// store.js
-import { createStore } from 'redux';
+import React, { useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Provider } from "react-redux";
+import { store } from "./store/index.js";
+import { AuthProvider } from "./components/auth/AuthProvider";
+import Layout from "./components/layout/Layout";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import AuthPage from "./routes/AuthPage";
+import Dashboard from "./routes/Dashboard";
+import TaskBoard from "./components/tasks/TaskBoard";
+import UserProfile from "./components/users/UserProfile";
+import UserList from "./components/users/UserList";
+import OrganizationDashboard from "./components/organization/OrganizationDashboard";
+import "./styles.css";
 
-// Action Types
-const ADD_TASK = 'ADD_TASK';
-const TOGGLE_TASK = 'TOGGLE_TASK';
-const EDIT_TASK = 'EDIT_TASK';
-const SET_FILTER = 'SET_FILTER';
+function App() {
+  const [activeView, setActiveView] = useState("dashboard");
 
-// Action Creators
-export const addTask = (description) => ({
-  type: ADD_TASK,
-  payload: { description },
-});
-
-export const toggleTask = (id) => ({
-  type: TOGGLE_TASK,
-  payload: { id },
-});
-
-export const editTask = (id, description) => ({
-  type: EDIT_TASK,
-  payload: { id, description },
-});
-
-export const setFilter = (filter) => ({
-  type: SET_FILTER,
-  payload: { filter }, // 'all', 'done', 'not_done'
-});
-
-// Initial state
-const initialState = {
-  tasks: [],
-  filter: 'all',
-};
-
-// Reducer
-function todoReducer(state = initialState, action) {
-  switch (action.type) {
-    case ADD_TASK: {
-      const newTask = {
-        id: Date.now(),
-        description: action.payload.description,
-        isDone: false,
-      };
-      return { ...state, tasks: [...state.tasks, newTask] };
+  const renderMainContent = () => {
+    switch (activeView) {
+      case "dashboard":
+        return <Dashboard />;
+      case "tasks":
+        return <TaskBoard />;
+      case "projects":
+        return (
+          <div className="placeholder-content">
+            <h2>Projects</h2>
+            <p>Project management features coming soon!</p>
+          </div>
+        );
+      case "team":
+        return <UserList />;
+      case "calendar":
+        return (
+          <div className="placeholder-content">
+            <h2>Calendar</h2>
+            <p>Calendar view coming soon!</p>
+          </div>
+        );
+      case "reports":
+        return (
+          <div className="placeholder-content">
+            <h2>Reports</h2>
+            <p>Analytics and reporting features coming soon!</p>
+          </div>
+        );
+      case "organization":
+        return <OrganizationDashboard />;
+      case "profile":
+        return <UserProfile />;
+      default:
+        return <Dashboard />;
     }
-    case TOGGLE_TASK: {
-      const tasks = state.tasks.map((task) =>
-        task.id === action.payload.id ? { ...task, isDone: !task.isDone } : task
-      );
-      return { ...state, tasks };
-    }
-    case EDIT_TASK: {
-      const tasks = state.tasks.map((task) =>
-        task.id === action.payload.id
-          ? { ...task, description: action.payload.description }
-          : task
-      );
-      return { ...state, tasks };
-    }
-    case SET_FILTER: {
-      return { ...state, filter: action.payload.filter };
-    }
-    default:
-      return state;
-  }
+  };
+
+  return (
+    <Provider store={store}>
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/auth" element={<AuthPage />} />
+
+              {/* Protected Routes */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <Layout
+                      activeView={activeView}
+                      onViewChange={setActiveView}
+                    >
+                      <Routes>
+                        <Route
+                          path="/"
+                          element={<Navigate to="/dashboard" replace />}
+                        />
+                        <Route
+                          path="/dashboard"
+                          element={
+                            <div onClick={() => setActiveView("dashboard")}>
+                              {renderMainContent()}
+                            </div>
+                          }
+                        />
+                        <Route
+                          path="/tasks"
+                          element={
+                            <div onClick={() => setActiveView("tasks")}>
+                              {renderMainContent()}
+                            </div>
+                          }
+                        />
+                        <Route
+                          path="/projects"
+                          element={
+                            <div onClick={() => setActiveView("projects")}>
+                              {renderMainContent()}
+                            </div>
+                          }
+                        />
+                        <Route
+                          path="/team"
+                          element={
+                            <div onClick={() => setActiveView("team")}>
+                              {renderMainContent()}
+                            </div>
+                          }
+                        />
+                        <Route
+                          path="/calendar"
+                          element={
+                            <div onClick={() => setActiveView("calendar")}>
+                              {renderMainContent()}
+                            </div>
+                          }
+                        />
+                        <Route
+                          path="/reports"
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <div onClick={() => setActiveView("reports")}>
+                                {renderMainContent()}
+                              </div>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/organization"
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <div
+                                onClick={() => setActiveView("organization")}
+                              >
+                                {renderMainContent()}
+                              </div>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/profile"
+                          element={
+                            <div onClick={() => setActiveView("profile")}>
+                              {renderMainContent()}
+                            </div>
+                          }
+                        />
+
+                        {/* Fallback */}
+                        <Route
+                          path="*"
+                          element={<Navigate to="/dashboard" replace />}
+                        />
+                      </Routes>
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </div>
+        </Router>
+      </AuthProvider>
+    </Provider>
+  );
 }
 
-export const store = createStore(todoReducer);
+export default App;

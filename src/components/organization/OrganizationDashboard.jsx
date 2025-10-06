@@ -1,27 +1,45 @@
-import React, { useState } from 'react';
-import { useAuth } from '../auth/AuthProvider';
+import React, { useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
 
 const OrganizationDashboard = () => {
   const { user, organization } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
 
   const mockStats = {
     totalMembers: 12,
     activeTasks: 45,
     completedTasks: 123,
-    projectsCount: 8
+    projectsCount: 8,
   };
 
   const mockMembers = [
-    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'admin', status: 'active' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'member', status: 'active' },
-    { id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'member', status: 'pending' }
+    {
+      id: 1,
+      name: "John Doe",
+      email: "john@example.com",
+      role: "admin",
+      status: "active",
+    },
+    {
+      id: 2,
+      name: "Jane Smith",
+      email: "jane@example.com",
+      role: "member",
+      status: "active",
+    },
+    {
+      id: 3,
+      name: "Bob Johnson",
+      email: "bob@example.com",
+      role: "member",
+      status: "pending",
+    },
   ];
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'members', label: 'Members' },
-    { id: 'settings', label: 'Settings' }
+    { id: "overview", label: "Overview" },
+    { id: "members", label: "Members" },
+    { id: "settings", label: "Settings" },
   ];
 
   const renderOverview = () => (
@@ -44,7 +62,7 @@ const OrganizationDashboard = () => {
           <p>Projects</p>
         </div>
       </div>
-      
+
       <div className="recent-activity">
         <h3>Recent Activity</h3>
         <div className="activity-list">
@@ -71,7 +89,7 @@ const OrganizationDashboard = () => {
         <h3>Team Members</h3>
         <button className="btn primary">Invite Members</button>
       </div>
-      
+
       <div className="members-table">
         <div className="table-header">
           <span>Name</span>
@@ -80,16 +98,18 @@ const OrganizationDashboard = () => {
           <span>Status</span>
           <span>Actions</span>
         </div>
-        
-        {mockMembers.map(member => (
+
+        {mockMembers.map((member) => (
           <div key={member.id} className="table-row">
             <span className="member-name">{member.name}</span>
             <span className="member-email">{member.email}</span>
             <span className={`member-role ${member.role}`}>{member.role}</span>
-            <span className={`member-status ${member.status}`}>{member.status}</span>
+            <span className={`member-status ${member.status}`}>
+              {member.status}
+            </span>
             <div className="member-actions">
               <button className="btn small">Edit</button>
-              {member.role !== 'admin' && (
+              {member.role !== "admin" && (
                 <button className="btn small danger">Remove</button>
               )}
             </div>
@@ -105,18 +125,18 @@ const OrganizationDashboard = () => {
         <h3>Organization Details</h3>
         <div className="form-group">
           <label>Organization Name</label>
-          <input type="text" value={organization?.name || ''} readOnly />
+          <input type="text" value={organization?.name || ""} readOnly />
         </div>
         <div className="form-group">
           <label>Plan</label>
-          <select value={organization?.plan || 'free'}>
+          <select value={organization?.plan || "free"}>
             <option value="free">Free</option>
             <option value="pro">Pro</option>
             <option value="enterprise">Enterprise</option>
           </select>
         </div>
       </div>
-      
+
       <div className="settings-section">
         <h3>Preferences</h3>
         <div className="form-group">
@@ -132,7 +152,7 @@ const OrganizationDashboard = () => {
           </label>
         </div>
       </div>
-      
+
       <div className="settings-actions">
         <button className="btn primary">Save Changes</button>
       </div>
@@ -143,7 +163,9 @@ const OrganizationDashboard = () => {
     return (
       <div className="no-organization">
         <h2>No Organization</h2>
-        <p>You need to join an organization or create one to access this page.</p>
+        <p>
+          You need to join an organization or create one to access this page.
+        </p>
       </div>
     );
   }
@@ -154,23 +176,23 @@ const OrganizationDashboard = () => {
         <h1>{organization.name}</h1>
         <p>Welcome back, {user?.name}</p>
       </div>
-      
+
       <div className="dashboard-tabs">
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
-            className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`tab ${activeTab === tab.id ? "active" : ""}`}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
           </button>
         ))}
       </div>
-      
+
       <div className="dashboard-content">
-        {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'members' && renderMembers()}
-        {activeTab === 'settings' && renderSettings()}
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "members" && renderMembers()}
+        {activeTab === "settings" && renderSettings()}
       </div>
     </div>
   );
