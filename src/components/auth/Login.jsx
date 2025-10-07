@@ -24,8 +24,13 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
       // Call real API
       const response = await authAPI.login(data.email, data.password);
 
-      // Store token
-      localStorage.setItem("token", response.token);
+      // Store auth data with token
+      const authData = {
+        token: response.token,
+        user: response.user,
+        organization: response.user.organization,
+      };
+      localStorage.setItem("auth", JSON.stringify(authData));
 
       // Update auth context
       login(response.user, response.user.organization);

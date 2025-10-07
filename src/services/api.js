@@ -13,13 +13,26 @@ const api = axios.create({
 // Add auth token to requests
 api.interceptors.request.use(
   (config) => {
+    // Try to get token from auth object first
     const auth = localStorage.getItem("auth");
     if (auth) {
-      const { token } = JSON.parse(auth);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      try {
+        const { token } = JSON.parse(auth);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          return config;
+        }
+      } catch (e) {
+        console.error("Error parsing auth:", e);
       }
     }
+
+    // Fallback to standalone token
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     return config;
   },
   (error) => {
@@ -34,6 +47,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear auth and redirect to login
       localStorage.removeItem("auth");
+      localStorage.removeItem("token");
       window.location.href = "/auth";
     }
     return Promise.reject(error);
@@ -154,6 +168,18 @@ export const usersAPI = {
     const response = await api.delete(`/users/${id}`);
     return response.data;
   },
+
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const response = await api.post("/users/upload-avatar", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
 };
 
 // Notifications API
@@ -185,6 +211,37 @@ export const notificationsAPI = {
 
   create: async (notificationData) => {
     const response = await api.post("/notifications/create", notificationData);
+    return response.data;
+  },
+};
+
+// Invites API
+export const invitesAPI = {
+  create: async (email, role = "member") => {
+    const response = await api.post("/invites/create", { email, role });
+    return response.data;
+  },
+
+  validate: async (code) => {
+    const response = await api.get(`/invites/validate/${code}`);
+    return response.data;
+  },
+
+  accept: async (code, name, password) => {
+    const response = await api.post(`/invites/accept/${code}`, {
+      name,
+      password,
+    });
+    return response.data;
+  },
+
+  list: async () => {
+    const response = await api.get("/invites/list");
+    return response.data;
+  },
+
+  revoke: async (code) => {
+    const response = await api.delete(`/invites/${code}`);
     return response.data;
   },
 };

@@ -1,15 +1,15 @@
 import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { getImageUrl } from "../../utils/imageUtils";
 
-const Sidebar = ({
-  isOpen,
-  onClose,
-  activeView,
-  onViewChange,
-  onNewTask,
-  onNewProject,
-}) => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get current active view from location pathname
+  const activeView = location.pathname.split("/")[1] || "dashboard";
 
   const menuItems = [
     {
@@ -61,11 +61,9 @@ const Sidebar = ({
   );
 
   const handleItemClick = (itemId) => {
-    onViewChange(itemId);
-    // Close sidebar on mobile after selection
-    if (window.innerWidth <= 768) {
-      onClose();
-    }
+    navigate(`/${itemId}`);
+    // Close sidebar after navigation
+    onClose();
   };
 
   return (
@@ -114,39 +112,28 @@ const Sidebar = ({
                 </ul>
               </div>
             )}
-
-            <div className="nav-section">
-              <h3 className="nav-section-title">Quick Actions</h3>
-              <ul className="nav-list">
-                <li className="nav-item">
-                  <button className="nav-link quick-action" onClick={onNewTask}>
-                    <span className="nav-icon">➕</span>
-                    <span className="nav-label">New Task</span>
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button
-                    className="nav-link quick-action"
-                    onClick={onNewProject}
-                  >
-                    <span className="nav-icon">📁</span>
-                    <span className="nav-label">New Project</span>
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button className="nav-link quick-action">
-                    <span className="nav-icon">👤</span>
-                    <span className="nav-label">Invite Member</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
           </nav>
 
           <div className="sidebar-footer">
-            <div className="user-info">
+            <div
+              className="user-info"
+              onClick={() => {
+                navigate("/profile");
+                onClose();
+              }}
+              style={{ cursor: "pointer" }}
+              title="View Profile"
+            >
               <div className="user-avatar small">
-                {user?.name?.charAt(0).toUpperCase()}
+                {user?.avatar ? (
+                  <img
+                    src={getImageUrl(user.avatar)}
+                    alt={user.name}
+                    className="avatar-img"
+                  />
+                ) : (
+                  user?.name?.charAt(0).toUpperCase()
+                )}
               </div>
               <div className="user-details">
                 <p className="user-name">{user?.name}</p>
@@ -155,10 +142,21 @@ const Sidebar = ({
             </div>
 
             <div className="sidebar-actions">
-              <button className="sidebar-action" title="Settings">
+              <button
+                className="sidebar-action"
+                title="Settings"
+                onClick={() => {
+                  navigate("/profile");
+                  onClose();
+                }}
+              >
                 ⚙️
               </button>
-              <button className="sidebar-action" title="Help">
+              <button
+                className="sidebar-action"
+                title="Help"
+                onClick={() => window.open("https://github.com", "_blank")}
+              >
                 ❓
               </button>
             </div>

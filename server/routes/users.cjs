@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User.cjs");
 const { protect, authorize } = require("../middleware/auth.cjs");
+const upload = require("../middleware/upload.cjs");
 
 // @route   GET /api/users
 // @desc    Get all users in organization
@@ -113,5 +114,37 @@ router.delete("/:id", protect, authorize("admin"), async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
+
+// @route   POST /api/users/upload-avatar
+// @desc    Upload user avatar
+// @access  Private
+router.post(
+  "/upload-avatar",
+  protect,
+  upload.single("avatar"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Update user's avatar field with file path
+      const avatarUrl = `/uploads/${req.file.filename}`;
+      const user = await User.findByIdAndUpdate(
+        req.user._id,
+        { avatar: avatarUrl },
+        { new: true }
+      ).select("-password");
+
+      res.json({
+        message: "Avatar uploaded successfully",
+        avatar: avatarUrl,
+        user,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  }
+);
 
 module.exports = router;

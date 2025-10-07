@@ -29,7 +29,7 @@ const TaskCard = ({ task, onMove, onUpdate, onDelete, columns }) => {
 
   const handleDragStart = (e) => {
     setIsDragging(true);
-    e.dataTransfer.setData("text/plain", task.id.toString());
+    e.dataTransfer.setData("text/plain", task._id.toString());
   };
 
   const handleDragEnd = () => {
@@ -38,10 +38,10 @@ const TaskCard = ({ task, onMove, onUpdate, onDelete, columns }) => {
 
   const handleDrop = (e) => {
     e.preventDefault();
-    const draggedTaskId = parseInt(e.dataTransfer.getData("text/plain"));
+    const draggedTaskId = e.dataTransfer.getData("text/plain");
     const newStatus = e.currentTarget.dataset.status;
 
-    if (draggedTaskId && newStatus && draggedTaskId !== task.id) {
+    if (draggedTaskId && newStatus && draggedTaskId !== task._id) {
       onMove(draggedTaskId, newStatus);
     }
   };

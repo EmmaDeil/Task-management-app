@@ -53,8 +53,13 @@ const OrganizationSignup = ({ onSwitchToLogin }) => {
         data.plan
       );
 
-      // Store token
-      localStorage.setItem("token", response.token);
+      // Store auth data with token
+      const authData = {
+        token: response.token,
+        user: response.user,
+        organization: response.user.organization,
+      };
+      localStorage.setItem("auth", JSON.stringify(authData));
 
       // Update auth context with user and organization data
       login(response.user, response.user.organization);

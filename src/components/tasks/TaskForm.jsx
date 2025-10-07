@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../../hooks/useAuth";
+import { usersAPI } from "../../services/api";
 
-const TaskForm = ({ onSubmit, onCancel, task = null }) => {
+const TaskForm = ({
+  onSubmit,
+  onCancel,
+  task = null,
+  initialStatus = "todo",
+}) => {
   const { user } = useAuth();
   const isEditing = !!task;
   const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
 
   // Load projects from localStorage
   useEffect(() => {
@@ -13,6 +21,24 @@ const TaskForm = ({ onSubmit, onCancel, task = null }) => {
     if (storedProjects) {
       setProjects(JSON.parse(storedProjects));
     }
+  }, []);
+
+  // Fetch users from API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        const data = await usersAPI.getAll();
+        setUsers(data);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+        setUsers([]);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
   }, []);
 
   const {
@@ -24,45 +50,62 @@ const TaskForm = ({ onSubmit, onCancel, task = null }) => {
       title: task?.title || "",
       description: task?.description || "",
       priority: task?.priority || "medium",
+      status: task?.status || initialStatus,
       dueDate: task?.dueDate || "",
       tags: task?.tags?.join(", ") || "",
-      assigneeId: task?.assignee?.id || user?.id,
+      assignee: task?.assignee?._id || user?.id || "",
       project: task?.project || "",
     },
   });
 
-  const mockUsers = [
-    { id: 1, name: "John Doe" },
-    { id: 2, name: "Jane Smith" },
-    { id: 3, name: "Bob Johnson" },
-  ];
-
   const handleFormSubmit = (data) => {
     const taskData = {
-      ...data,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      status: data.status || initialStatus,
+      dueDate: data.dueDate || null,
+      project: data.project || null,
+      assignee: data.assignee || null, // MongoDB ObjectId
       tags: data.tags
         ? data.tags
             .split(",")
             .map((tag) => tag.trim())
             .filter((tag) => tag)
         : [],
-      assignee: mockUsers.find((u) => u.id === parseInt(data.assigneeId)),
     };
 
     onSubmit(taskData);
   };
 
   return (
-    <div className="task-form-overlay">
-      <div className="task-form-modal">
+    <div
+      className="task-form-overlay"
+      onClick={(e) => {
+        // Only close if clicking the overlay itself, not the modal content
+        if (e.target.className === "task-form-overlay") {
+          onCancel();
+        }
+      }}
+    >
+      <div className="task-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="form-header">
           <h3>{isEditing ? "Edit Task" : "Create New Task"}</h3>
-          <button onClick={onCancel} className="close-btn">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
+            className="close-btn"
+          >
             ×
           </button>
         </div>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="task-form">
+          {/* Hidden status field */}
+          <input type="hidden" {...register("status")} />
+
           <div className="form-group">
             <label htmlFor="title">Task Title *</label>
             <input
@@ -129,23 +172,26 @@ const TaskForm = ({ onSubmit, onCancel, task = null }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="assigneeId">Assignee</label>
+            <label htmlFor="assignee">Assignee</label>
             <select
-              id="assigneeId"
-              {...register("assigneeId", {
+              id="assignee"
+              {...register("assignee", {
                 required: "Please select an assignee",
               })}
-              className={errors.assigneeId ? "error" : ""}
+              className={errors.assignee ? "error" : ""}
+              disabled={loadingUsers}
             >
-              <option value="">Select assignee</option>
-              {mockUsers.map((userItem) => (
-                <option key={userItem.id} value={userItem.id}>
-                  {userItem.name}
+              <option value="">
+                {loadingUsers ? "Loading users..." : "Select assignee"}
+              </option>
+              {users.map((userItem) => (
+                <option key={userItem._id} value={userItem._id}>
+                  {userItem.name} ({userItem.email})
                 </option>
               ))}
             </select>
-            {errors.assigneeId && (
-              <span className="field-error">{errors.assigneeId.message}</span>
+            {errors.assignee && (
+              <span className="field-error">{errors.assignee.message}</span>
             )}
           </div>
 
@@ -163,7 +209,10 @@ const TaskForm = ({ onSubmit, onCancel, task = null }) => {
           <div className="form-actions">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancel();
+              }}
               className="btn secondary"
               disabled={isSubmitting}
             >

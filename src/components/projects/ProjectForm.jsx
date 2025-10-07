@@ -24,11 +24,25 @@ const ProjectForm = ({ onSubmit, onCancel, project = null }) => {
   };
 
   return (
-    <div className="task-form-overlay">
-      <div className="task-form-modal">
+    <div
+      className="task-form-overlay"
+      onClick={(e) => {
+        // Only close if clicking the overlay itself, not the modal content
+        if (e.target.className === "task-form-overlay") {
+          onCancel();
+        }
+      }}
+    >
+      <div className="task-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="form-header">
           <h3>{isEditing ? "Edit Project" : "Create New Project"}</h3>
-          <button onClick={onCancel} className="close-btn">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
+            className="close-btn"
+          >
             ×
           </button>
         </div>
@@ -101,7 +115,10 @@ const ProjectForm = ({ onSubmit, onCancel, project = null }) => {
           <div className="form-actions">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancel();
+              }}
               className="btn secondary"
               disabled={isSubmitting}
             >

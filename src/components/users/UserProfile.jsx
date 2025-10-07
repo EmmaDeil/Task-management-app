@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { usersAPI, authAPI } from "../../services/api";
+import { getImageUrl } from "../../utils/imageUtils";
 
 const UserProfile = () => {
-  const { user, organization } = useAuth();
+  const { user, organization, login } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -36,13 +39,80 @@ const UserProfile = () => {
     setIsEditing(false);
   };
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size must be less than 5MB");
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Upload avatar to server (stores file and updates MongoDB)
+      await usersAPI.uploadAvatar(file);
+
+      // Fetch updated user data from server
+      const updatedUserData = await authAPI.getMe();
+
+      // Update auth context and localStorage with fresh data from MongoDB
+      const authData = JSON.parse(localStorage.getItem("auth") || "{}");
+      authData.user = {
+        ...authData.user,
+        avatar: updatedUserData.avatar,
+      };
+      localStorage.setItem("auth", JSON.stringify(authData));
+
+      // Update context
+      login({ ...user, avatar: updatedUserData.avatar }, organization);
+
+      alert("Profile picture updated successfully!");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      alert("Failed to upload profile picture. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="user-profile">
       <div className="profile-header">
         <div className="profile-avatar">
-          <div className="avatar-circle">
-            {user?.name?.charAt(0).toUpperCase()}
-          </div>
+          {uploading ? (
+            <div className="avatar-circle loading">
+              <span>Uploading...</span>
+            </div>
+          ) : user?.avatar ? (
+            <img
+              src={getImageUrl(user.avatar)}
+              alt={user.name}
+              className="avatar-image"
+            />
+          ) : (
+            <div className="avatar-circle">
+              {user?.name?.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <label htmlFor="avatar-upload" className="avatar-upload-btn">
+            📷
+            <input
+              type="file"
+              id="avatar-upload"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              style={{ display: "none" }}
+            />
+          </label>
         </div>
         <div className="profile-info">
           <h2>{user?.name}</h2>

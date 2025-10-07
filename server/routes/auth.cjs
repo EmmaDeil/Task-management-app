@@ -126,6 +126,7 @@ router.get("/me", protect, async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      avatar: user.avatar,
       organization: {
         id: user.organization._id,
         name: user.organization.name,
@@ -155,12 +156,10 @@ router.post("/organization/register", async (req, res) => {
     // Check if organization domain already exists
     const orgExists = await Organization.findOne({ domain });
     if (orgExists) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Organization domain already taken. Please choose a different organization name.",
-        });
+      return res.status(400).json({
+        message:
+          "Organization domain already taken. Please choose a different organization name.",
+      });
     }
 
     // Check if user email already exists

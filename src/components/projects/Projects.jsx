@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import ProjectForm from "./ProjectForm";
+import ProjectDetailsModal from "./ProjectDetailsModal";
 
 const Projects = () => {
   const [projects, setProjects] = useState([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [viewingProject, setViewingProject] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Load projects from localStorage (you can integrate with API later)
@@ -54,6 +56,10 @@ const Projects = () => {
   const openEditForm = (project) => {
     setSelectedProject(project);
     setShowProjectForm(true);
+  };
+
+  const handleProjectClick = (project) => {
+    setViewingProject(project);
   };
 
   const closeForm = () => {
@@ -125,6 +131,7 @@ const Projects = () => {
               key={project.id}
               className="project-card"
               style={{ borderLeft: `4px solid ${project.color}` }}
+              onClick={() => handleProjectClick(project)}
             >
               <div className="project-header">
                 <div>
@@ -142,14 +149,30 @@ const Projects = () => {
                 <div className="project-actions">
                   <button
                     className="btn icon"
-                    onClick={() => openEditForm(project)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleProjectClick(project);
+                    }}
+                    title="View details"
+                  >
+                    ℹ️
+                  </button>
+                  <button
+                    className="btn icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditForm(project);
+                    }}
                     title="Edit project"
                   >
                     ✏️
                   </button>
                   <button
                     className="btn icon"
-                    onClick={() => handleDeleteProject(project.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteProject(project.id);
+                    }}
                     title="Delete project"
                   >
                     🗑️
@@ -182,7 +205,7 @@ const Projects = () => {
 
               <div className="project-progress">
                 <div className="progress-info">
-                  <span>Tasks Progress</span>
+                  <span>Project Progress</span>
                   <span>
                     {project.completedTasks}/{project.tasksCount}
                   </span>
@@ -211,6 +234,24 @@ const Projects = () => {
           onSubmit={selectedProject ? handleUpdateProject : handleCreateProject}
           onCancel={closeForm}
           project={selectedProject}
+        />
+      )}
+
+      {viewingProject && (
+        <ProjectDetailsModal
+          project={viewingProject}
+          onClose={() => setViewingProject(null)}
+          onUpdate={(projectData) => {
+            const updatedProjects = projects.map((p) =>
+              p.id === viewingProject.id ? { ...p, ...projectData } : p
+            );
+            saveProjects(updatedProjects);
+            setViewingProject({ ...viewingProject, ...projectData });
+          }}
+          onDelete={(projectId) => {
+            const updatedProjects = projects.filter((p) => p.id !== projectId);
+            saveProjects(updatedProjects);
+          }}
         />
       )}
     </div>

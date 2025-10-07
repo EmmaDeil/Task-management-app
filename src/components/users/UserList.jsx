@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 
-const UserList = () => {
+const UserList = ({ onNavigate }) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
@@ -80,7 +80,9 @@ const UserList = () => {
       <div className="user-list-header">
         <h2>Team Members</h2>
         {canManageUsers && (
-          <button className="btn primary">Invite New Member</button>
+          <button className="btn primary" onClick={() => onNavigate("invite")}>
+            Invite New Member
+          </button>
         )}
       </div>
 

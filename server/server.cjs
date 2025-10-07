@@ -17,12 +17,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // Routes
 app.use("/api/auth", require("./routes/auth.cjs"));
 app.use("/api/tasks", require("./routes/tasks.cjs"));
 app.use("/api/organizations", require("./routes/organizations.cjs"));
 app.use("/api/users", require("./routes/users.cjs"));
 app.use("/api/notifications", require("./routes/notifications.cjs"));
+app.use("/api/invites", require("./routes/invites.cjs"));
 
 // Health check
 app.get("/api/health", (req, res) => {

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 
-const OrganizationDashboard = () => {
+const OrganizationDashboard = ({ onNavigate }) => {
   const { user, organization } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -87,7 +87,9 @@ const OrganizationDashboard = () => {
     <div className="org-members">
       <div className="members-header">
         <h3>Team Members</h3>
-        <button className="btn primary">Invite Members</button>
+        <button className="btn primary" onClick={() => onNavigate("invite")}>
+          Invite Members
+        </button>
       </div>
 
       <div className="members-table">

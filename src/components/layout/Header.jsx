@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { useAuth } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { notificationsAPI } from "../../services/api";
+import { getImageUrl } from "../../utils/imageUtils";
 
 const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   const { user, organization, logout } = useAuth();
@@ -210,7 +211,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
 
   const getTimeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-    
+
     if (seconds < 60) return "Just now";
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -461,23 +462,47 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
               <div className="notification-dropdown">
                 <div className="notification-header">
                   <h3>Notifications</h3>
-                  <button className="mark-all-read">Mark all as read</button>
+                  {unreadCount > 0 && (
+                    <button
+                      className="mark-all-read"
+                      onClick={handleMarkAllAsRead}
+                    >
+                      Mark all as read
+                    </button>
+                  )}
                 </div>
                 <div className="notification-list">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`notification-item ${
-                        notification.unread ? "unread" : ""
-                      }`}
-                    >
-                      <p>{notification.text}</p>
-                      <small>{notification.time}</small>
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification._id}
+                        className={`notification-item ${
+                          notification.isRead ? "" : "unread"
+                        }`}
+                        onClick={() => handleNotificationClick(notification)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleNotificationClick(notification);
+                          }
+                        }}
+                      >
+                        <p>{notification.title || notification.message}</p>
+                        <small>{getTimeAgo(notification.createdAt)}</small>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="notification-empty">
+                      <p>No notifications</p>
                     </div>
-                  ))}
+                  )}
                 </div>
                 <div className="notification-footer">
-                  <button className="view-all-notifications btn btn-secondary">
+                  <button
+                    className="view-all-btn"
+                    onClick={handleViewAllNotifications}
+                  >
                     View all notifications
                   </button>
                 </div>
@@ -492,7 +517,15 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
               aria-label="User menu"
             >
               <div className="user-avatar">
-                {user?.name?.charAt(0).toUpperCase()}
+                {user?.avatar ? (
+                  <img
+                    src={getImageUrl(user.avatar)}
+                    alt={user.name}
+                    className="avatar-img"
+                  />
+                ) : (
+                  user?.name?.charAt(0).toUpperCase()
+                )}
               </div>
               <span className="user-name">{user?.name}</span>
               {/* <span className="dropdown-arrow">▼</span> */}
@@ -502,7 +535,15 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
               <div className="user-dropdown">
                 <div className="user-info">
                   <div className="user-avatar large">
-                    {user?.name?.charAt(0).toUpperCase()}
+                    {user?.avatar ? (
+                      <img
+                        src={getImageUrl(user.avatar)}
+                        alt={user.name}
+                        className="avatar-img"
+                      />
+                    ) : (
+                      user?.name?.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div>
                     <p className="user-name">{user?.name}</p>
@@ -514,10 +555,42 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                 <div className="user-menu-divider"></div>
 
                 <div className="user-menu-items">
-                  <button className="user-menu-item">👤 Profile</button>
-                  <button className="user-menu-item">⚙️ Settings</button>
-                  <button className="user-menu-item">🏢 Organization</button>
-                  <button className="user-menu-item">❓ Help & Support</button>
+                  <button
+                    className="user-menu-item"
+                    onClick={() => {
+                      navigate("/profile");
+                      setShowUserMenu(false);
+                    }}
+                  >
+                    👤 Profile
+                  </button>
+                  <button
+                    className="user-menu-item"
+                    onClick={() => {
+                      navigate("/profile");
+                      setShowUserMenu(false);
+                    }}
+                  >
+                    ⚙️ Settings
+                  </button>
+                  <button
+                    className="user-menu-item"
+                    onClick={() => {
+                      navigate("/organization");
+                      setShowUserMenu(false);
+                    }}
+                  >
+                    🏢 Organization
+                  </button>
+                  <button
+                    className="user-menu-item"
+                    onClick={() => {
+                      window.open("https://github.com", "_blank");
+                      setShowUserMenu(false);
+                    }}
+                  >
+                    ❓ Help & Support
+                  </button>
                 </div>
 
                 <div className="user-menu-divider"></div>

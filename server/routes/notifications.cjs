@@ -132,7 +132,16 @@ router.delete("/:id", protect, async (req, res) => {
 // @access  Private
 router.post("/create", protect, async (req, res) => {
   try {
-    const { userId, type, title, message, link, relatedTask, relatedProject, priority } = req.body;
+    const {
+      userId,
+      type,
+      title,
+      message,
+      link,
+      relatedTask,
+      relatedProject,
+      priority,
+    } = req.body;
 
     const notification = await Notification.create({
       user: userId || req.user._id,
