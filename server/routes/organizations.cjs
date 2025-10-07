@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const Organization = require("../models/Organization");
-const User = require("../models/User");
-const { protect, authorize } = require("../middleware/auth");
+const Organization = require("../models/Organization.cjs");
+const User = require("../models/User.cjs");
+const { protect, authorize } = require("../middleware/auth.cjs");
 
 // @route   GET /api/organizations/:id
 // @desc    Get organization details

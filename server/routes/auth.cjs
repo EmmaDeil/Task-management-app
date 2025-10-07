@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const Organization = require("../models/Organization");
-const { protect } = require("../middleware/auth");
+const User = require("../models/User.cjs");
+const Organization = require("../models/Organization.cjs");
+const { protect } = require("../middleware/auth.cjs");
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -143,27 +143,40 @@ router.get("/me", protect, async (req, res) => {
 // @access  Public
 router.post("/organization/register", async (req, res) => {
   try {
-    const { organizationName, domain, name, email, password } = req.body;
+    const { organizationName, domain, name, email, password, plan } = req.body;
+
+    // Validate required fields
+    if (!organizationName || !domain || !name || !email || !password) {
+      return res.status(400).json({
+        message: "Please provide all required fields",
+      });
+    }
 
     // Check if organization domain already exists
     const orgExists = await Organization.findOne({ domain });
     if (orgExists) {
       return res
         .status(400)
-        .json({ message: "Organization domain already taken" });
+        .json({
+          message:
+            "Organization domain already taken. Please choose a different organization name.",
+        });
     }
 
     // Check if user email already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({
+        message:
+          "An account with this email already exists. Please use a different email or sign in.",
+      });
     }
 
-    // Create organization
+    // Create organization with plan
     const organization = await Organization.create({
       name: organizationName,
       domain,
-      plan: "free",
+      plan: plan || "free",
     });
 
     // Create admin user
@@ -194,7 +207,12 @@ router.post("/organization/register", async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Organization registration error:", error);
+    res.status(500).json({
+      message:
+        "Server error during organization registration. Please try again.",
+      error: error.message,
+    });
   }
 });
 

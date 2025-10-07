@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const Task = require("../models/Task");
-const { protect, authorize } = require("../middleware/auth");
+const Task = require("../models/Task.cjs");
+const { protect, authorize } = require("../middleware/auth.cjs");
 
 // @route   GET /api/tasks
 // @desc    Get all tasks for user's organization

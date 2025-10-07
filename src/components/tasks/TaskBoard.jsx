@@ -1,44 +1,33 @@
-import React, { useState } from "react";
-import { useAuth } from "../../hooks/useAuth";
+import React, { useState, useEffect } from "react";
 import TaskCard from "./TaskCard";
 import TaskForm from "./TaskForm";
+import { tasksAPI } from "../../services/api";
 
 const TaskBoard = () => {
-  const { user } = useAuth();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState("todo");
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Design user interface",
-      description: "Create mockups for the new dashboard",
-      status: "todo",
-      priority: "high",
-      assignee: { id: 1, name: "John Doe" },
-      dueDate: "2024-10-15",
-      tags: ["design", "ui"],
-    },
-    {
-      id: 2,
-      title: "Implement authentication",
-      description: "Set up user login and registration",
-      status: "in-progress",
-      priority: "high",
-      assignee: { id: 2, name: "Jane Smith" },
-      dueDate: "2024-10-12",
-      tags: ["backend", "security"],
-    },
-    {
-      id: 3,
-      title: "Write unit tests",
-      description: "Add test coverage for core components",
-      status: "done",
-      priority: "medium",
-      assignee: { id: 1, name: "John Doe" },
-      dueDate: "2024-10-08",
-      tags: ["testing"],
-    },
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch tasks from API
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await tasksAPI.getAll();
+        setTasks(data);
+      } catch (err) {
+        console.error("Error fetching tasks:", err);
+        setError("Failed to load tasks. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   const columns = [
     { id: "todo", title: "To Do", color: "#e3f2fd" },
@@ -51,41 +40,84 @@ const TaskBoard = () => {
     return tasks.filter((task) => task.status === status);
   };
 
-  const handleTaskMove = (taskId, newStatus) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, status: newStatus } : task
-      )
-    );
+  const handleTaskMove = async (taskId, newStatus) => {
+    try {
+      const updatedTask = await tasksAPI.update(taskId, { status: newStatus });
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
+      );
+    } catch (err) {
+      console.error("Error moving task:", err);
+      alert("Failed to move task. Please try again.");
+    }
   };
 
-  const handleTaskCreate = (taskData) => {
-    const newTask = {
-      id: Date.now(),
-      ...taskData,
-      status: selectedColumn,
-      assignee: user,
-    };
-    setTasks((prevTasks) => [...prevTasks, newTask]);
-    setShowTaskForm(false);
+  const handleTaskCreate = async (taskData) => {
+    try {
+      const newTask = await tasksAPI.create({
+        ...taskData,
+        status: selectedColumn,
+      });
+      setTasks((prevTasks) => [...prevTasks, newTask]);
+      setShowTaskForm(false);
+    } catch (err) {
+      console.error("Error creating task:", err);
+      alert("Failed to create task. Please try again.");
+    }
   };
 
-  const handleTaskUpdate = (taskId, updates) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, ...updates } : task
-      )
-    );
+  const handleTaskUpdate = async (taskId, updates) => {
+    try {
+      const updatedTask = await tasksAPI.update(taskId, updates);
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
+      );
+    } catch (err) {
+      console.error("Error updating task:", err);
+      alert("Failed to update task. Please try again.");
+    }
   };
 
-  const handleTaskDelete = (taskId) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+  const handleTaskDelete = async (taskId) => {
+    try {
+      await tasksAPI.delete(taskId);
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+    } catch (err) {
+      console.error("Error deleting task:", err);
+      alert("Failed to delete task. Please try again.");
+    }
   };
 
   const openTaskForm = (columnId) => {
     setSelectedColumn(columnId);
     setShowTaskForm(true);
   };
+
+  if (loading) {
+    return (
+      <div className="task-board">
+        <div className="loading-container">
+          <p>Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="task-board">
+        <div className="error-container">
+          <p>{error}</p>
+          <button
+            className="btn primary"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="task-board">

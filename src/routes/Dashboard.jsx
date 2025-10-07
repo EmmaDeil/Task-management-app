@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
-const Dashboard = () => {
+const Dashboard = ({ onNewTask, onNewProject }) => {
   const { user, organization } = useAuth();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // Add sample tasks on first load for demo purposes
   useEffect(() => {
@@ -182,7 +184,9 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
-          <button className="btn secondary">View All Tasks</button>
+          <button className="btn secondary" onClick={() => navigate("/tasks")}>
+            View All Tasks
+          </button>
         </div>
 
         <div className="dashboard-section">
@@ -202,8 +206,12 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-actions">
-        <button className="btn primary">Create New Task</button>
-        <button className="btn secondary">Start New Project</button>
+        <button className="btn primary" onClick={onNewTask}>
+          Create New Task
+        </button>
+        <button className="btn secondary" onClick={onNewProject}>
+          Start New Project
+        </button>
       </div>
     </div>
   );

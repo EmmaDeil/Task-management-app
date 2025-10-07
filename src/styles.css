@@ -223,6 +223,24 @@ body {
   color: var(--text-secondary);
 }
 
+.search-section-header {
+  padding: 0.75rem 1rem;
+  background: var(--background-color);
+  border-top: 1px solid var(--border-color);
+  position: sticky;
+  top: 65px;
+  z-index: 1;
+}
+
+.search-section-header h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .search-results-list {
   padding: 0.5rem;
 }
@@ -233,10 +251,19 @@ body {
   cursor: pointer;
   transition: var(--transition);
   border-radius: var(--border-radius);
+  outline: none;
 }
 
-.search-result-item:hover {
+.search-result-item:hover,
+.search-result-item:focus {
   background: var(--background-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transform: translateX(2px);
+}
+
+.search-result-item:active {
+  transform: translateX(1px);
+  background: var(--border-color);
 }
 
 .search-result-item:last-child {
@@ -1188,9 +1215,29 @@ body {
 }
 
 .board-columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
   gap: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+/* Horizontal scroll styling */
+.board-columns::-webkit-scrollbar {
+  height: 8px;
+}
+
+.board-columns::-webkit-scrollbar-track {
+  background: var(--bg-color);
+  border-radius: 4px;
+}
+
+.board-columns::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.board-columns::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
 
 .board-column {
@@ -1200,6 +1247,17 @@ body {
   min-height: 600px;
   display: flex;
   flex-direction: column;
+  min-width: 320px;
+  flex: 0 0 320px;
+}
+
+/* Desktop and Tablet - All columns in single row */
+@media (min-width: 769px) {
+  .board-column {
+    min-width: 300px;
+    flex: 1 1 300px;
+    max-width: 400px;
+  }
 }
 
 .column-header {
@@ -1410,6 +1468,18 @@ body {
   background: var(--surface-color);
 }
 
+/* Tablet Responsive */
+@media (min-width: 481px) and (max-width: 768px) {
+  .board-columns {
+    gap: 1rem;
+  }
+
+  .board-column {
+    min-width: 280px;
+    flex: 1 1 280px;
+  }
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .app-container.sidebar-open .main-content {
@@ -1437,8 +1507,16 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 
+  /* Mobile - Flex wrap columns to stack properly */
   .board-columns {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .board-column {
+    min-width: 100%;
+    flex: 1 1 auto;
+    max-width: 100%;
   }
 
   .form-row {
@@ -1526,5 +1604,198 @@ body {
     --text-primary: #f1f5f9;
     --text-secondary: #94a3b8;
     --border-color: #334155;
+  }
+}
+
+/* Modal Overlay Styles */
+.task-form-overlay,
+.project-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.task-form-modal,
+.project-form-modal {
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.form-header h3 {
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.close-btn:hover {
+  background-color: var(--background-color);
+  color: var(--text-primary);
+}
+
+.task-form,
+.project-form {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.625rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  transition: var(--transition);
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group input.error {
+  border-color: var(--danger-color);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.field-error {
+  display: block;
+  color: var(--danger-color);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--background-color);
+}
+
+.form-actions button {
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+}
+
+.form-actions .btn-cancel {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.form-actions .btn-cancel:hover {
+  background-color: var(--background-color);
+}
+
+.form-actions .btn-submit {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.form-actions .btn-submit:hover {
+  background-color: var(--primary-hover);
+}
+
+.form-actions .btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+  .task-form-modal,
+  .project-form-modal {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+    max-height: 100vh;
+  }
+
+  .task-form-overlay,
+  .project-form-overlay {
+    padding: 0;
   }
 }

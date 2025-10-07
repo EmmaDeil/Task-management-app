@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { authAPI } from "../../services/api";
 
 const OrganizationSignup = ({ onSwitchToLogin }) => {
   const { login } = useAuth();
@@ -18,34 +19,60 @@ const OrganizationSignup = ({ onSwitchToLogin }) => {
   } = useForm();
 
   const password = watch("adminPassword");
+  const organizationName = watch("organizationName");
+
+  // Generate domain preview
+  const getDomainPreview = () => {
+    if (!organizationName) return "";
+    return organizationName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  };
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Generate domain from organization name
+      const domain = data.organizationName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
 
-      // Mock successful organization creation
-      const mockOrganization = {
-        id: Date.now(),
-        name: data.organizationName,
-        plan: data.plan || "free",
-        domain: data.organizationName.toLowerCase().replace(/\s+/g, "-"),
-      };
+      // Call the real API
+      const response = await authAPI.registerOrganization(
+        data.organizationName,
+        domain,
+        data.adminName,
+        data.adminEmail,
+        data.adminPassword,
+        data.plan
+      );
 
-      const mockAdminUser = {
-        id: Date.now(),
-        email: data.adminEmail,
-        name: data.adminName,
-        role: "admin",
-      };
+      // Store token
+      localStorage.setItem("token", response.token);
 
-      login(mockAdminUser, mockOrganization);
+      // Update auth context with user and organization data
+      login(response.user, response.user.organization);
+
+      // Navigate to dashboard
       navigate("/dashboard");
-    } catch {
-      setError("Failed to create organization. Please try again.");
+    } catch (err) {
+      // Handle specific error messages from backend
+      const errorMessage =
+        err.response?.data?.message ||
+        "Failed to create organization. Please try again.";
+
+      setError(errorMessage);
+
+      // If organization domain is taken, suggest going back to step 1
+      if (errorMessage.includes("domain")) {
+        setStep(1);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -74,13 +101,30 @@ const OrganizationSignup = ({ onSwitchToLogin }) => {
                       message:
                         "Organization name must be at least 2 characters",
                     },
+                    maxLength: {
+                      value: 50,
+                      message:
+                        "Organization name must not exceed 50 characters",
+                    },
                   })}
                   className={errors.organizationName ? "error" : ""}
+                  placeholder="e.g., Acme Corporation"
                 />
                 {errors.organizationName && (
                   <span className="field-error">
                     {errors.organizationName.message}
                   </span>
+                )}
+                {organizationName && getDomainPreview() && (
+                  <small
+                    style={{
+                      color: "var(--text-secondary)",
+                      marginTop: "0.5rem",
+                      display: "block",
+                    }}
+                  >
+                    Domain: <strong>{getDomainPreview()}</strong>
+                  </small>
                 )}
               </div>
 
@@ -126,8 +170,13 @@ const OrganizationSignup = ({ onSwitchToLogin }) => {
                       value: 2,
                       message: "Name must be at least 2 characters",
                     },
+                    maxLength: {
+                      value: 50,
+                      message: "Name must not exceed 50 characters",
+                    },
                   })}
                   className={errors.adminName ? "error" : ""}
+                  placeholder="Your full name"
                 />
                 {errors.adminName && (
                   <span className="field-error">
@@ -144,17 +193,28 @@ const OrganizationSignup = ({ onSwitchToLogin }) => {
                   {...register("adminEmail", {
                     required: "Admin email is required",
                     pattern: {
-                      value: /^\S+@\S+$/i,
+                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                       message: "Invalid email address",
                     },
                   })}
                   className={errors.adminEmail ? "error" : ""}
+                  placeholder="admin@example.com"
                 />
                 {errors.adminEmail && (
                   <span className="field-error">
                     {errors.adminEmail.message}
                   </span>
                 )}
+                <small
+                  style={{
+                    color: "var(--text-secondary)",
+                    marginTop: "0.5rem",
+                    display: "block",
+                  }}
+                >
+                  This email will be used to sign in as the organization
+                  administrator.
+                </small>
               </div>
 
               <div className="form-group">
@@ -168,14 +228,30 @@ const OrganizationSignup = ({ onSwitchToLogin }) => {
                       value: 8,
                       message: "Password must be at least 8 characters",
                     },
+                    pattern: {
+                      value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                      message:
+                        "Password must contain uppercase, lowercase, and number",
+                    },
                   })}
                   className={errors.adminPassword ? "error" : ""}
+                  placeholder="••••••••"
                 />
                 {errors.adminPassword && (
                   <span className="field-error">
                     {errors.adminPassword.message}
                   </span>
                 )}
+                <small
+                  style={{
+                    color: "var(--text-secondary)",
+                    marginTop: "0.5rem",
+                    display: "block",
+                  }}
+                >
+                  Must be at least 8 characters with uppercase, lowercase, and a
+                  number.
+                </small>
               </div>
 
               <div className="form-group">

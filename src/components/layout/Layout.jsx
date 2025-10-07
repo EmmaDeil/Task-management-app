@@ -3,7 +3,13 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../hooks/useAuth";
 
-const Layout = ({ children, activeView, onViewChange }) => {
+const Layout = ({
+  children,
+  activeView,
+  onViewChange,
+  onNewTask,
+  onNewProject,
+}) => {
   const { isAuthenticated } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -62,6 +68,8 @@ const Layout = ({ children, activeView, onViewChange }) => {
         onClose={handleSidebarClose}
         activeView={activeView}
         onViewChange={onViewChange}
+        onNewTask={onNewTask}
+        onNewProject={onNewProject}
       />
 
       <main className="main-content">

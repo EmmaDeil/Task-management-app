@@ -1,7 +1,14 @@
 import React from "react";
 import { useAuth } from "../../hooks/useAuth";
 
-const Sidebar = ({ isOpen, onClose, activeView, onViewChange }) => {
+const Sidebar = ({
+  isOpen,
+  onClose,
+  activeView,
+  onViewChange,
+  onNewTask,
+  onNewProject,
+}) => {
   const { user } = useAuth();
 
   const menuItems = [
@@ -112,13 +119,16 @@ const Sidebar = ({ isOpen, onClose, activeView, onViewChange }) => {
               <h3 className="nav-section-title">Quick Actions</h3>
               <ul className="nav-list">
                 <li className="nav-item">
-                  <button className="nav-link quick-action">
+                  <button className="nav-link quick-action" onClick={onNewTask}>
                     <span className="nav-icon">➕</span>
                     <span className="nav-label">New Task</span>
                   </button>
                 </li>
                 <li className="nav-item">
-                  <button className="nav-link quick-action">
+                  <button
+                    className="nav-link quick-action"
+                    onClick={onNewProject}
+                  >
                     <span className="nav-icon">📁</span>
                     <span className="nav-label">New Project</span>
                   </button>

@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useAuth } from "../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { notificationsAPI } from "../../services/api";
 
 const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   const { user, organization, logout } = useAuth();
+  const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [projectResults, setProjectResults] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
@@ -16,34 +22,41 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
 
   // Get tasks from Redux store
   const tasks = useSelector((state) => state.tasks.items);
-  const notifications = [
-    { id: 1, text: "New task assigned to you", time: "5m ago", unread: true },
-    {
-      id: 2,
-      text: "Project deadline approaching",
-      time: "1h ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      text: "Team meeting tomorrow at 10 AM",
-      time: "2h ago",
-      unread: false,
-    },
-  ];
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  // Fetch notifications from API
+  useEffect(() => {
+    fetchNotifications();
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await notificationsAPI.getAll({ limit: 5 });
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+      // Set empty array on error to avoid showing sample data
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
 
   // Handle search
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setSearchResults([]);
+      setProjectResults([]);
       setShowSearchResults(false);
       return;
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = tasks.filter((task) => {
+
+    // Search tasks
+    const filteredTasks = tasks.filter((task) => {
       return (
         task.title?.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query) ||
@@ -54,7 +67,23 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
       );
     });
 
-    setSearchResults(filtered);
+    // Search projects from localStorage
+    const storedProjects = localStorage.getItem("projects");
+    let filteredProjects = [];
+
+    if (storedProjects) {
+      const projects = JSON.parse(storedProjects);
+      filteredProjects = projects.filter((project) => {
+        return (
+          project.name?.toLowerCase().includes(query) ||
+          project.description?.toLowerCase().includes(query) ||
+          project.status?.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    setSearchResults(filteredTasks);
+    setProjectResults(filteredProjects);
     setShowSearchResults(true);
   }, [searchQuery, tasks]);
 
@@ -91,6 +120,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   const handleSearchClear = () => {
     setSearchQuery("");
     setSearchResults([]);
+    setProjectResults([]);
     setShowSearchResults(false);
   };
 
@@ -114,6 +144,80 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
     return icons[priority] || "⚪";
   };
 
+  const handleSearchResultClick = (task) => {
+    // Navigate to tasks page
+    navigate("/tasks");
+
+    // Close search dropdown
+    setShowSearchResults(false);
+    setSearchQuery("");
+
+    // Optional: Store selected task ID to highlight it
+    sessionStorage.setItem("selectedTaskId", task.id);
+  };
+
+  const handleProjectResultClick = (project) => {
+    // Navigate to projects page
+    navigate("/projects");
+
+    // Close search dropdown
+    setShowSearchResults(false);
+    setSearchQuery("");
+
+    // Optional: Store selected project ID
+    sessionStorage.setItem("selectedProjectId", project.id);
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      // Mark as read
+      if (!notification.isRead) {
+        await notificationsAPI.markAsRead(notification._id);
+      }
+
+      // Close dropdown
+      setShowNotifications(false);
+
+      // Navigate to the related content
+      if (notification.link) {
+        navigate(notification.link);
+      } else if (notification.relatedTask) {
+        navigate("/tasks");
+      } else if (notification.relatedProject) {
+        navigate("/projects");
+      }
+
+      // Refresh notifications
+      fetchNotifications();
+    } catch (err) {
+      console.error("Error handling notification click:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationsAPI.markAllAsRead();
+      fetchNotifications();
+    } catch (err) {
+      console.error("Error marking all as read:", err);
+    }
+  };
+
+  const handleViewAllNotifications = () => {
+    setShowNotifications(false);
+    navigate("/notifications");
+  };
+
+  const getTimeAgo = (date) => {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    
+    if (seconds < 60) return "Just now";
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return new Date(date).toLocaleDateString();
+  };
+
   const handleLogout = () => {
     logout();
     setShowUserMenu(false);
@@ -135,7 +239,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
         </button>
 
         <div className="header-logo">
-          <h1>TaskFlow</h1>
+          <h1>Org Manager</h1>
           {organization && (
             <span className="org-name">{organization.name}</span>
           )}
@@ -173,67 +277,165 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
               <div className="search-dropdown-header">
                 <h3>Search Results</h3>
                 <span className="search-count">
-                  {searchResults.length}{" "}
-                  {searchResults.length === 1 ? "task" : "tasks"} found
+                  {searchResults.length + projectResults.length} result
+                  {searchResults.length + projectResults.length !== 1
+                    ? "s"
+                    : ""}{" "}
+                  found
                 </span>
               </div>
 
-              {searchResults.length > 0 ? (
-                <div className="search-results-list">
-                  {searchResults.map((task) => (
-                    <div key={task.id} className="search-result-item">
-                      <div className="search-result-header">
-                        <span className="search-result-priority">
-                          {getPriorityIcon(task.priority)}
-                        </span>
-                        <h4 className="search-result-title">{task.title}</h4>
+              {/* Projects Section */}
+              {projectResults.length > 0 && (
+                <>
+                  <div className="search-section-header">
+                    <h4>📁 Projects ({projectResults.length})</h4>
+                  </div>
+                  <div className="search-results-list">
+                    {projectResults.map((project) => (
+                      <div
+                        key={project.id}
+                        className="search-result-item"
+                        onClick={() => handleProjectResultClick(project)}
+                        style={{ cursor: "pointer" }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleProjectResultClick(project);
+                          }
+                        }}
+                      >
+                        <div className="search-result-header">
+                          <span className="search-result-priority">📁</span>
+                          <h4 className="search-result-title">
+                            {project.name}
+                          </h4>
+                        </div>
+
+                        {project.description && (
+                          <p className="search-result-description">
+                            {project.description}
+                          </p>
+                        )}
+
+                        <div className="search-result-meta">
+                          <span
+                            className="search-result-status"
+                            style={{
+                              backgroundColor: project.color || "#6b7280",
+                              color: "white",
+                              padding: "0.2rem 0.5rem",
+                              borderRadius: "4px",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            {project.status || "active"}
+                          </span>
+
+                          {project.startDate && (
+                            <span className="search-result-date">
+                              📅{" "}
+                              {new Date(project.startDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
-                      {task.description && (
-                        <p className="search-result-description">
-                          {task.description}
-                        </p>
-                      )}
-
-                      <div className="search-result-meta">
-                        <span
-                          className="search-result-status"
-                          style={{
-                            backgroundColor: getStatusColor(task.status),
-                            color: "white",
-                            padding: "0.2rem 0.5rem",
-                            borderRadius: "4px",
-                            fontSize: "0.75rem",
-                          }}
-                        >
-                          {task.status?.replace("-", " ")}
-                        </span>
-
-                        {task.assignee && (
-                          <span className="search-result-assignee">
-                            👤 {task.assignee}
+              {/* Tasks Section */}
+              {searchResults.length > 0 && (
+                <>
+                  <div className="search-section-header">
+                    <h4>✓ Tasks ({searchResults.length})</h4>
+                  </div>
+                  <div className="search-results-list">
+                    {searchResults.map((task) => (
+                      <div
+                        key={task.id}
+                        className="search-result-item"
+                        onClick={() => handleSearchResultClick(task)}
+                        style={{ cursor: "pointer" }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleSearchResultClick(task);
+                          }
+                        }}
+                      >
+                        <div className="search-result-header">
+                          <span className="search-result-priority">
+                            {getPriorityIcon(task.priority)}
                           </span>
+                          <h4 className="search-result-title">{task.title}</h4>
+                        </div>
+
+                        {task.description && (
+                          <p className="search-result-description">
+                            {task.description}
+                          </p>
                         )}
 
-                        {task.project && (
-                          <span className="search-result-project">
-                            📁 {task.project}
+                        <div className="search-result-meta">
+                          <span
+                            className="search-result-status"
+                            style={{
+                              backgroundColor: getStatusColor(task.status),
+                              color: "white",
+                              padding: "0.2rem 0.5rem",
+                              borderRadius: "4px",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            {task.status?.replace("-", " ")}
                           </span>
-                        )}
 
-                        {task.dueDate && (
-                          <span className="search-result-date">
-                            📅 {new Date(task.dueDate).toLocaleDateString()}
-                          </span>
-                        )}
+                          {task.assignee && (
+                            <span className="search-result-assignee">
+                              👤 {task.assignee}
+                            </span>
+                          )}
+
+                          {task.project && (
+                            <span className="search-result-project">
+                              📁 {task.project}
+                            </span>
+                          )}
+
+                          {task.dueDate && (
+                            <span className="search-result-date">
+                              📅 {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* No results message */}
+              {searchResults.length === 0 && projectResults.length === 0 && (
                 <div className="search-no-results">
-                  <p>No tasks found matching "{searchQuery}"</p>
-                  <small>Try different keywords or check your spelling</small>
+                  {tasks.length === 0 ? (
+                    <>
+                      <p>No tasks or projects available yet</p>
+                      <small>
+                        Create your first task or project to get started!
+                      </small>
+                    </>
+                  ) : (
+                    <>
+                      <p>No results found matching "{searchQuery}"</p>
+                      <small>
+                        Try different keywords or check your spelling
+                      </small>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -275,7 +477,9 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                   ))}
                 </div>
                 <div className="notification-footer">
-                  <button>View all notifications</button>
+                  <button className="view-all-notifications btn btn-secondary">
+                    View all notifications
+                  </button>
                 </div>
               </div>
             )}

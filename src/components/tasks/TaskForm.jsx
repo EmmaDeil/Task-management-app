@@ -1,10 +1,19 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../../hooks/useAuth";
 
 const TaskForm = ({ onSubmit, onCancel, task = null }) => {
   const { user } = useAuth();
   const isEditing = !!task;
+  const [projects, setProjects] = useState([]);
+
+  // Load projects from localStorage
+  useEffect(() => {
+    const storedProjects = localStorage.getItem("projects");
+    if (storedProjects) {
+      setProjects(JSON.parse(storedProjects));
+    }
+  }, []);
 
   const {
     register,
@@ -18,6 +27,7 @@ const TaskForm = ({ onSubmit, onCancel, task = null }) => {
       dueDate: task?.dueDate || "",
       tags: task?.tags?.join(", ") || "",
       assigneeId: task?.assignee?.id || user?.id,
+      project: task?.project || "",
     },
   });
 
@@ -90,6 +100,7 @@ const TaskForm = ({ onSubmit, onCancel, task = null }) => {
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
+                <option value="urgent">Urgent</option>
               </select>
             </div>
 
@@ -102,6 +113,19 @@ const TaskForm = ({ onSubmit, onCancel, task = null }) => {
                 min={new Date().toISOString().split("T")[0]}
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="project">Project</label>
+            <select id="project" {...register("project")}>
+              <option value="">No Project</option>
+              {projects.map((proj) => (
+                <option key={proj.id} value={proj.name}>
+                  {proj.name}
+                </option>
+              ))}
+            </select>
+            <small>Assign this task to a project</small>
           </div>
 
           <div className="form-group">
