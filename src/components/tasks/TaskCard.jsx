@@ -29,7 +29,9 @@ const TaskCard = ({ task, onMove, onUpdate, onDelete, columns }) => {
 
   const handleDragStart = (e) => {
     setIsDragging(true);
-    e.dataTransfer.setData("text/plain", task._id.toString());
+    // Handle both _id (MongoDB) and id (local) formats
+    const taskId = task._id || task.id;
+    e.dataTransfer.setData("text/plain", taskId.toString());
   };
 
   const handleDragEnd = () => {
@@ -40,8 +42,9 @@ const TaskCard = ({ task, onMove, onUpdate, onDelete, columns }) => {
     e.preventDefault();
     const draggedTaskId = e.dataTransfer.getData("text/plain");
     const newStatus = e.currentTarget.dataset.status;
+    const currentTaskId = (task._id || task.id).toString();
 
-    if (draggedTaskId && newStatus && draggedTaskId !== task._id) {
+    if (draggedTaskId && newStatus && draggedTaskId !== currentTaskId) {
       onMove(draggedTaskId, newStatus);
     }
   };
@@ -129,7 +132,9 @@ const TaskCard = ({ task, onMove, onUpdate, onDelete, columns }) => {
             value={task.status}
             onChange={(e) => {
               e.stopPropagation();
-              onMove(task.id, e.target.value);
+              // Handle both _id (MongoDB) and id (local) formats
+              const taskId = task._id || task.id;
+              onMove(taskId, e.target.value);
             }}
             className="status-select"
             onClick={(e) => e.stopPropagation()}
@@ -145,6 +150,7 @@ const TaskCard = ({ task, onMove, onUpdate, onDelete, columns }) => {
 
       {showDetails && (
         <TaskDetails
+          key={task._id || task.id} // Force re-render when task changes
           task={task}
           onClose={() => setShowDetails(false)}
           onUpdate={onUpdate}

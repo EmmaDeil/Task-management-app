@@ -14,6 +14,7 @@ const TaskBoard = () => {
   const [showFilter, setShowFilter] = useState(false);
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterAssignee, setFilterAssignee] = useState("all");
+  const [draggedTask, setDraggedTask] = useState(null);
 
   // Fetch tasks from API
   useEffect(() => {
@@ -64,7 +65,11 @@ const TaskBoard = () => {
     try {
       const updatedTask = await tasksAPI.update(taskId, { status: newStatus });
       setTasks((prevTasks) =>
-        prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
+        prevTasks.map((task) =>
+          (task._id || task.id).toString() === taskId.toString()
+            ? updatedTask
+            : task
+        )
       );
     } catch (err) {
       console.error("Error moving task:", err);
@@ -88,9 +93,17 @@ const TaskBoard = () => {
 
   const handleTaskUpdate = async (taskId, updates) => {
     try {
+      console.log("TaskBoard handleTaskUpdate called");
+      console.log("Task ID:", taskId);
+      console.log("Updates:", updates);
       const updatedTask = await tasksAPI.update(taskId, updates);
+      console.log("Updated task from API:", updatedTask);
       setTasks((prevTasks) =>
-        prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
+        prevTasks.map((task) =>
+          (task._id || task.id).toString() === taskId.toString()
+            ? updatedTask
+            : task
+        )
       );
     } catch (err) {
       console.error("Error updating task:", err);
@@ -111,6 +124,36 @@ const TaskBoard = () => {
   const openTaskForm = (columnId) => {
     setSelectedColumn(columnId);
     setShowTaskForm(true);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e, task) => {
+    setDraggedTask(task);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/html", e.target);
+    e.target.style.opacity = "0.4";
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = "1";
+    setDraggedTask(null);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    return false;
+  };
+
+  const handleDrop = async (e, newStatus) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (draggedTask && draggedTask.status !== newStatus) {
+      await handleTaskMove(draggedTask._id, newStatus);
+    }
+
+    return false;
   };
 
   if (loading) {
@@ -225,7 +268,12 @@ const TaskBoard = () => {
 
       <div className="board-columns">
         {columns.map((column) => (
-          <div key={column.id} className="board-column">
+          <div
+            key={column.id}
+            className="board-column"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, column.id)}
+          >
             <div
               className="column-header"
               style={{ backgroundColor: column.color }}
@@ -248,14 +296,21 @@ const TaskBoard = () => {
 
             <div className="column-tasks">
               {getTasksByStatus(column.id).map((task) => (
-                <TaskCard
+                <div
                   key={task._id}
-                  task={task}
-                  onMove={handleTaskMove}
-                  onUpdate={handleTaskUpdate}
-                  onDelete={handleTaskDelete}
-                  columns={columns}
-                />
+                  draggable="true"
+                  onDragStart={(e) => handleDragStart(e, task)}
+                  onDragEnd={handleDragEnd}
+                  style={{ cursor: "move" }}
+                >
+                  <TaskCard
+                    task={task}
+                    onMove={handleTaskMove}
+                    onUpdate={handleTaskUpdate}
+                    onDelete={handleTaskDelete}
+                    columns={columns}
+                  />
+                </div>
               ))}
 
               {getTasksByStatus(column.id).length === 0 && (

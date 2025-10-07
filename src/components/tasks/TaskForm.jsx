@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../../hooks/useAuth";
-import { usersAPI } from "../../services/api";
+import { usersAPI, projectsAPI } from "../../services/api";
 
 const TaskForm = ({
   onSubmit,
@@ -14,13 +14,25 @@ const TaskForm = ({
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(true);
 
-  // Load projects from localStorage
+  // Fetch projects from API
   useEffect(() => {
-    const storedProjects = localStorage.getItem("projects");
-    if (storedProjects) {
-      setProjects(JSON.parse(storedProjects));
-    }
+    const fetchProjects = async () => {
+      try {
+        setLoadingProjects(true);
+        const data = await projectsAPI.getAll();
+        setProjects(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching projects:", err);
+        alert("Failed to load projects. Please refresh the page.");
+        setProjects([]);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    fetchProjects();
   }, []);
 
   // Fetch users from API
@@ -65,7 +77,7 @@ const TaskForm = ({
       priority: data.priority,
       status: data.status || initialStatus,
       dueDate: data.dueDate || null,
-      project: data.project || null,
+      project: data.project && data.project.trim() !== "" ? data.project : null,
       assignee: data.assignee || null, // MongoDB ObjectId
       tags: data.tags
         ? data.tags
@@ -75,6 +87,8 @@ const TaskForm = ({
         : [],
     };
 
+    console.log("TaskForm submitting data:", taskData);
+    console.log("Original task:", task);
     onSubmit(taskData);
   };
 
@@ -160,13 +174,22 @@ const TaskForm = ({
 
           <div className="form-group">
             <label htmlFor="project">Project</label>
-            <select id="project" {...register("project")}>
-              <option value="">No Project</option>
-              {projects.map((proj) => (
-                <option key={proj.id} value={proj.name}>
-                  {proj.name}
-                </option>
-              ))}
+            <select
+              id="project"
+              {...register("project")}
+              disabled={loadingProjects}
+            >
+              <option value="">
+                {loadingProjects ? "Loading projects..." : "No Project"}
+              </option>
+              {projects.map((proj) => {
+                const projectId = (proj._id || proj.id).toString();
+                return (
+                  <option key={projectId} value={proj.name}>
+                    {proj.name}
+                  </option>
+                );
+              })}
             </select>
             <small>Assign this task to a project</small>
           </div>
