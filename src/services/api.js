@@ -8,6 +8,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // Enable sending cookies
 });
 
 // Add auth token to requests
@@ -40,16 +41,101 @@ api.interceptors.request.use(
   }
 );
 
+// Track if we're already refreshing to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Handle response errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Clear auth and redirect to login
-      localStorage.removeItem("auth");
-      localStorage.removeItem("token");
-      window.location.href = "/auth";
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Handle network errors (backend down)
+    if (!error.response) {
+      console.error("Network error - backend may be down:", error.message);
+      return Promise.reject(
+        new Error("Unable to connect to server. Please check your connection.")
+      );
     }
+
+    // If 401 error and we haven't tried to refresh yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // If already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Try to refresh the token
+        const response = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+
+        const { token, user } = response.data;
+
+        // Update stored auth data
+        const authData = {
+          token,
+          user,
+          organization: user.organization,
+        };
+        localStorage.setItem("auth", JSON.stringify(authData));
+
+        // Update the failed request with new token
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+
+        // Process queued requests
+        processQueue(null, token);
+        isRefreshing = false;
+
+        // Retry the original request
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Process queued requests with error
+        processQueue(refreshError, null);
+        isRefreshing = false;
+
+        // Refresh failed - clear auth and redirect (only once)
+        if (!window.__logoutInProgress) {
+          window.__logoutInProgress = true;
+          localStorage.removeItem("auth");
+          localStorage.removeItem("token");
+
+          // Small delay to allow current renders to complete
+          setTimeout(() => {
+            window.location.href = "/auth";
+          }, 100);
+        }
+
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // For other errors, just pass them through
     return Promise.reject(error);
   }
 );
@@ -92,6 +178,16 @@ export const authAPI = {
 
   getMe: async () => {
     const response = await api.get("/auth/me");
+    return response.data;
+  },
+
+  logout: async () => {
+    const response = await api.post("/auth/logout");
+    return response.data;
+  },
+
+  refreshToken: async () => {
+    const response = await api.post("/auth/refresh");
     return response.data;
   },
 };
@@ -242,6 +338,34 @@ export const invitesAPI = {
 
   revoke: async (code) => {
     const response = await api.delete(`/invites/${code}`);
+    return response.data;
+  },
+};
+
+// Projects API
+export const projectsAPI = {
+  getAll: async () => {
+    const response = await api.get("/projects");
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/projects/${id}`);
+    return response.data;
+  },
+
+  create: async (projectData) => {
+    const response = await api.post("/projects", projectData);
+    return response.data;
+  },
+
+  update: async (id, projectData) => {
+    const response = await api.put(`/projects/${id}`, projectData);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/projects/${id}`);
     return response.data;
   },
 };

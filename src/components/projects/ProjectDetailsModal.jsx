@@ -18,10 +18,10 @@ const ProjectDetailsModal = ({ project, onClose, onUpdate, onDelete }) => {
         const tasks = await tasksAPI.getAll();
 
         // Filter tasks that belong to this project (by project ID or name)
+        // Use flexible _id || id pattern for MongoDB compatibility
+        const projectId = (project._id || project.id).toString();
         const projectTasks = tasks.filter(
-          (task) =>
-            task.project === project.id.toString() ||
-            task.project === project.name
+          (task) => task.project === projectId || task.project === project.name
         );
 
         // Count total tasks and completed tasks
@@ -47,7 +47,13 @@ const ProjectDetailsModal = ({ project, onClose, onUpdate, onDelete }) => {
     };
 
     fetchTaskCounts();
-  }, [project.id, project.name, project.tasksCount, project.completedTasks]);
+  }, [
+    project._id,
+    project.id,
+    project.name,
+    project.tasksCount,
+    project.completedTasks,
+  ]);
 
   if (!project) return null;
 

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useToast } from "../../hooks/useToast";
 import { invitesAPI } from "../../services/api";
+import { successMessages } from "../../utils/errorHandler";
 import "./InviteMember.css";
 
-const InviteMember = () => {
+const InviteMember = ({ onClose }) => {
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [loading, setLoading] = useState(false);
@@ -63,7 +66,7 @@ const InviteMember = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert("Invite link copied to clipboard!");
+    toast.showSuccess(successMessages.inviteCopied);
   };
 
   const formatDate = (dateString) => {
@@ -75,96 +78,120 @@ const InviteMember = () => {
   };
 
   return (
-    <div className="invite-member-container">
-      <div className="invite-member-card">
-        <h2>Invite Team Member</h2>
-        <p className="subtitle">
-          Send an invitation to a new team member to join your organization
-        </p>
-
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
-
-        <form onSubmit={handleSubmit} className="invite-form">
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="colleague@example.com"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <option value="member">Member</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? "Creating..." : "Create Invitation"}
+    <div
+      className="invite-member-modal-overlay"
+      onClick={(e) => {
+        if (e.target.className === "invite-member-modal-overlay") {
+          onClose?.();
+        }
+      }}
+    >
+      <div className="invite-member-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="invite-modal-header">
+          <h2>Invite Team Member</h2>
+          <button className="modal-close-btn" onClick={onClose} title="Close">
+            ×
           </button>
-        </form>
+        </div>
+        <div className="invite-modal-body">
+          <div className="invite-member-container">
+            <div className="invite-member-card">
+              <p className="subtitle">
+                Send an invitation to a new team member to join your
+                organization
+              </p>
 
-        {inviteLink && (
-          <div className="invite-link-box">
-            <h3>Invitation Link</h3>
-            <p className="help-text">
-              Share this link with the invited person. It expires in 7 days.
-            </p>
-            <div className="link-container">
-              <input
-                type="text"
-                value={inviteLink}
-                readOnly
-                className="link-input"
-              />
-              <button
-                onClick={() => copyToClipboard(inviteLink)}
-                className="btn btn-secondary"
-              >
-                📋 Copy
-              </button>
+              {error && <div className="error-message">{error}</div>}
+              {success && <div className="success-message">{success}</div>}
+
+              <form onSubmit={handleSubmit} className="invite-form">
+                <div className="form-group">
+                  <label htmlFor="email">Email Address</label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="colleague@example.com"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="role">Role</label>
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                  >
+                    <option value="member">Member</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? "Creating..." : "Create Invitation"}
+                </button>
+              </form>
+
+              {inviteLink && (
+                <div className="invite-link-box">
+                  <h3>Invitation Link</h3>
+                  <p className="help-text">
+                    Share this link with the invited person. It expires in 7
+                    days.
+                  </p>
+                  <div className="link-container">
+                    <input
+                      type="text"
+                      value={inviteLink}
+                      readOnly
+                      className="link-input"
+                    />
+                    <button
+                      onClick={() => copyToClipboard(inviteLink)}
+                      className="btn btn-secondary"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pending-invites-card">
+              <h3>Pending Invitations</h3>
+              {pendingInvites.length === 0 ? (
+                <p className="no-invites">No pending invitations</p>
+              ) : (
+                <div className="invites-list">
+                  {pendingInvites.map((invite) => (
+                    <div key={invite.code} className="invite-item">
+                      <div className="invite-info">
+                        <span className="invite-email">{invite.email}</span>
+                        <span className="invite-role badge">{invite.role}</span>
+                        <span className="invite-expires">
+                          Expires: {formatDate(invite.expiresAt)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleRevoke(invite.code)}
+                        className="btn btn-danger btn-sm"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
-
-      <div className="pending-invites-card">
-        <h3>Pending Invitations</h3>
-        {pendingInvites.length === 0 ? (
-          <p className="no-invites">No pending invitations</p>
-        ) : (
-          <div className="invites-list">
-            {pendingInvites.map((invite) => (
-              <div key={invite.code} className="invite-item">
-                <div className="invite-info">
-                  <span className="invite-email">{invite.email}</span>
-                  <span className="invite-role badge">{invite.role}</span>
-                  <span className="invite-expires">
-                    Expires: {formatDate(invite.expiresAt)}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleRevoke(invite.code)}
-                  className="btn btn-danger btn-sm"
-                >
-                  Revoke
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -1,31 +1,124 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useToast } from "../../hooks/useToast";
 import ProjectForm from "./ProjectForm";
+import { projectsAPI } from "../../services/api";
+import { handleError } from "../../utils/errorHandler";
 
 const ProjectDetails = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [editing, setEditing] = useState({
+    name: false,
+    description: false,
+    status: false,
+    startDate: false,
+    endDate: false,
+  });
+  const [editValues, setEditValues] = useState({
+    name: "",
+    description: "",
+    status: "",
+    startDate: "",
+    endDate: "",
+  });
 
   useEffect(() => {
-    // Load project from localStorage
-    const storedProjects = localStorage.getItem("projects");
-    if (storedProjects) {
-      const projects = JSON.parse(storedProjects);
-      const foundProject = projects.find((p) => p.id === parseInt(projectId));
-      if (foundProject) {
-        setProject(foundProject);
-      } else {
-        // Project not found, redirect to projects list
-        navigate("/projects");
+    // Fetch project from API
+    const fetchProject = async () => {
+      try {
+        setLoading(true);
+        const data = await projectsAPI.getById(projectId);
+        setProject(data);
+        setEditValues({
+          name: data.name,
+          description: data.description || "",
+          status: data.status,
+          startDate: data.startDate || "",
+          endDate: data.endDate || "",
+        });
+      } catch (error) {
+        console.error("Error fetching project:", error);
+        // Fallback to localStorage if API fails
+        const storedProjects = localStorage.getItem("projects");
+        if (storedProjects) {
+          const projects = JSON.parse(storedProjects);
+          const foundProject = projects.find(
+            (p) => p.id === parseInt(projectId)
+          );
+          if (foundProject) {
+            setProject(foundProject);
+            setEditValues({
+              name: foundProject.name,
+              description: foundProject.description || "",
+              status: foundProject.status,
+              startDate: foundProject.startDate || "",
+              endDate: foundProject.endDate || "",
+            });
+          } else {
+            navigate("/projects");
+          }
+        } else {
+          navigate("/projects");
+        }
+      } finally {
+        setLoading(false);
       }
-    } else {
-      navigate("/projects");
-    }
-    setLoading(false);
+    };
+
+    fetchProject();
   }, [projectId, navigate]);
+
+  // Start editing a field
+  const startEdit = (field) => {
+    setEditing({ ...editing, [field]: true });
+  };
+
+  // Cancel editing
+  const cancelEdit = (field) => {
+    setEditing({ ...editing, [field]: false });
+    // Reset to original value
+    setEditValues({
+      ...editValues,
+      [field]: project[field] || "",
+    });
+  };
+
+  // Save inline edit
+  const saveInlineEdit = async (field) => {
+    try {
+      const updateData = { [field]: editValues[field] };
+      const updatedProject = await projectsAPI.update(
+        project._id || project.id,
+        updateData
+      );
+      setProject({ ...project, ...updatedProject });
+      setEditing({ ...editing, [field]: false });
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error);
+      toast.showError(handleError(error, `Update ${field}`));
+      // Fallback to localStorage
+      const storedProjects = localStorage.getItem("projects");
+      if (storedProjects) {
+        const projects = JSON.parse(storedProjects);
+        const updatedProjects = projects.map((p) =>
+          p.id === project.id ? { ...p, [field]: editValues[field] } : p
+        );
+        localStorage.setItem("projects", JSON.stringify(updatedProjects));
+        setProject({ ...project, [field]: editValues[field] });
+        setEditing({ ...editing, [field]: false });
+      }
+    }
+  };
+
+  // Handle input change
+  const handleInputChange = (field, value) => {
+    setEditValues({ ...editValues, [field]: value });
+  };
 
   const handleUpdateProject = (projectData) => {
     const storedProjects = localStorage.getItem("projects");
@@ -104,15 +197,76 @@ const ProjectDetails = () => {
 
         <div className="project-details-title-section">
           <div className="project-title-group">
-            <h1 className="project-title">{project.name}</h1>
-            <span
-              className="project-status-badge"
-              style={{
-                backgroundColor: getStatusColor(project.status),
-              }}
-            >
-              {getStatusLabel(project.status)}
-            </span>
+            {editing.name ? (
+              <div className="inline-edit-group">
+                <input
+                  type="text"
+                  value={editValues.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  className="inline-edit-input title-input"
+                  autoFocus
+                />
+                <button
+                  className="btn small primary"
+                  onClick={() => saveInlineEdit("name")}
+                >
+                  ✓
+                </button>
+                <button
+                  className="btn small secondary"
+                  onClick={() => cancelEdit("name")}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <h1
+                className="project-title editable"
+                onClick={() => startEdit("name")}
+                title="Click to edit"
+              >
+                {project.name}
+              </h1>
+            )}
+
+            {editing.status ? (
+              <div className="inline-edit-group">
+                <select
+                  value={editValues.status}
+                  onChange={(e) => handleInputChange("status", e.target.value)}
+                  className="inline-edit-select"
+                  autoFocus
+                >
+                  <option value="planning">Planning</option>
+                  <option value="active">Active</option>
+                  <option value="on-hold">On Hold</option>
+                  <option value="completed">Completed</option>
+                </select>
+                <button
+                  className="btn small primary"
+                  onClick={() => saveInlineEdit("status")}
+                >
+                  ✓
+                </button>
+                <button
+                  className="btn small secondary"
+                  onClick={() => cancelEdit("status")}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <span
+                className="project-status-badge editable"
+                style={{
+                  backgroundColor: getStatusColor(project.status),
+                }}
+                onClick={() => startEdit("status")}
+                title="Click to change status"
+              >
+                {getStatusLabel(project.status)}
+              </span>
+            )}
           </div>
 
           <div className="project-actions-group">
@@ -134,9 +288,42 @@ const ProjectDetails = () => {
         {/* Description Card */}
         <div className="project-detail-card full-width">
           <h3 className="card-title">Description</h3>
-          <p className="project-full-description">
-            {project.description || "No description provided"}
-          </p>
+          {editing.description ? (
+            <div className="inline-edit-group">
+              <textarea
+                value={editValues.description}
+                onChange={(e) =>
+                  handleInputChange("description", e.target.value)
+                }
+                className="inline-edit-textarea"
+                rows="4"
+                autoFocus
+              />
+              <div className="inline-edit-actions">
+                <button
+                  className="btn small primary"
+                  onClick={() => saveInlineEdit("description")}
+                >
+                  Save
+                </button>
+                <button
+                  className="btn small secondary"
+                  onClick={() => cancelEdit("description")}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p
+              className="project-full-description editable"
+              onClick={() => startEdit("description")}
+              title="Click to edit"
+            >
+              {project.description ||
+                "No description provided. Click to add one."}
+            </p>
+          )}
         </div>
 
         {/* Key Information Card */}
@@ -163,30 +350,88 @@ const ProjectDetails = () => {
                 })}
               </span>
             </div>
-            {project.startDate && (
-              <div className="info-item">
-                <span className="info-label">Start Date</span>
-                <span className="info-value">
-                  {new Date(project.startDate).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+            <div className="info-item">
+              <span className="info-label">Start Date</span>
+              {editing.startDate ? (
+                <div className="inline-edit-group-small">
+                  <input
+                    type="date"
+                    value={editValues.startDate}
+                    onChange={(e) =>
+                      handleInputChange("startDate", e.target.value)
+                    }
+                    className="inline-edit-input-small"
+                  />
+                  <button
+                    className="btn small primary"
+                    onClick={() => saveInlineEdit("startDate")}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    className="btn small secondary"
+                    onClick={() => cancelEdit("startDate")}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <span
+                  className="info-value editable"
+                  onClick={() => startEdit("startDate")}
+                  title="Click to edit"
+                >
+                  {project.startDate
+                    ? new Date(project.startDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Not set - Click to add"}
                 </span>
-              </div>
-            )}
-            {project.endDate && (
-              <div className="info-item">
-                <span className="info-label">End Date</span>
-                <span className="info-value">
-                  {new Date(project.endDate).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+              )}
+            </div>
+            <div className="info-item">
+              <span className="info-label">End Date</span>
+              {editing.endDate ? (
+                <div className="inline-edit-group-small">
+                  <input
+                    type="date"
+                    value={editValues.endDate}
+                    onChange={(e) =>
+                      handleInputChange("endDate", e.target.value)
+                    }
+                    className="inline-edit-input-small"
+                  />
+                  <button
+                    className="btn small primary"
+                    onClick={() => saveInlineEdit("endDate")}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    className="btn small secondary"
+                    onClick={() => cancelEdit("endDate")}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <span
+                  className="info-value editable"
+                  onClick={() => startEdit("endDate")}
+                  title="Click to edit"
+                >
+                  {project.endDate
+                    ? new Date(project.endDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Not set - Click to add"}
                 </span>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 

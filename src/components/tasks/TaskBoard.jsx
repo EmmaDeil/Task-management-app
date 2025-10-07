@@ -3,9 +3,12 @@ import TaskCard from "./TaskCard";
 import TaskForm from "./TaskForm";
 import { tasksAPI } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../hooks/useToast";
+import { handleError, successMessages } from "../../utils/errorHandler";
 
 const TaskBoard = () => {
   const { user } = useAuth();
+  const toast = useToast();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState("todo");
   const [tasks, setTasks] = useState([]);
@@ -73,7 +76,7 @@ const TaskBoard = () => {
       );
     } catch (err) {
       console.error("Error moving task:", err);
-      alert("Failed to move task. Please try again.");
+      toast.showError(handleError(err, "Move Task"));
     }
   };
 
@@ -85,9 +88,10 @@ const TaskBoard = () => {
       });
       setTasks((prevTasks) => [...prevTasks, newTask]);
       setShowTaskForm(false);
+      toast.showSuccess(successMessages.taskCreated);
     } catch (err) {
       console.error("Error creating task:", err);
-      alert("Failed to create task. Please try again.");
+      toast.showError(handleError(err, "Create Task"));
     }
   };
 
@@ -107,7 +111,7 @@ const TaskBoard = () => {
       );
     } catch (err) {
       console.error("Error updating task:", err);
-      alert("Failed to update task. Please try again.");
+      toast.showError(handleError(err, "Update Task"));
     }
   };
 
@@ -115,9 +119,10 @@ const TaskBoard = () => {
     try {
       await tasksAPI.delete(taskId);
       setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+      toast.showSuccess(successMessages.taskDeleted);
     } catch (err) {
       console.error("Error deleting task:", err);
-      alert("Failed to delete task. Please try again.");
+      toast.showError(handleError(err, "Delete Task"));
     }
   };
 

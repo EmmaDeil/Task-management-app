@@ -1,19 +1,100 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { usersAPI, authAPI } from "../../services/api";
+import { useToast } from "../../hooks/useToast";
+import { usersAPI, authAPI, tasksAPI } from "../../services/api";
 import { getImageUrl } from "../../utils/imageUtils";
+import {
+  handleError,
+  successMessages,
+  errorMessages,
+} from "../../utils/errorHandler";
 
 const UserProfile = () => {
   const { user, organization, login } = useAuth();
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userTasks, setUserTasks] = useState([]);
+  const [userStats, setUserStats] = useState({
+    completedTasks: 0,
+    activeTasks: 0,
+    totalProjects: 0,
+  });
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
-    bio: "",
-    department: "",
-    phoneNumber: "",
+    bio: user?.bio || "",
+    department: user?.department || "",
+    phoneNumber: user?.phoneNumber || "",
   });
+
+  // Fetch user tasks and calculate statistics
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all tasks
+        const tasks = await tasksAPI.getAll();
+        const tasksArray = Array.isArray(tasks) ? tasks : [];
+
+        // Filter tasks for current user
+        const myTasks = tasksArray.filter((task) => {
+          const taskAssignee =
+            typeof task.assignedTo === "object"
+              ? task.assignedTo?._id
+              : task.assignedTo;
+          return (
+            task.assignee === user?.name ||
+            taskAssignee === user?.id ||
+            taskAssignee === user?._id
+          );
+        });
+
+        // Calculate statistics
+        const completed = myTasks.filter((task) => task.status === "done");
+        const active = myTasks.filter((task) => task.status !== "done");
+
+        // Get unique project IDs
+        const projectIds = new Set(
+          myTasks.map((task) => task.projectId).filter(Boolean)
+        );
+
+        setUserStats({
+          completedTasks: completed.length,
+          activeTasks: active.length,
+          totalProjects: projectIds.size,
+        });
+
+        // Get recent tasks (last 3)
+        const recentTasks = [...myTasks]
+          .sort(
+            (a, b) =>
+              new Date(b.updatedAt || b.createdAt) -
+              new Date(a.updatedAt || a.createdAt)
+          )
+          .slice(0, 3);
+
+        setUserTasks(recentTasks);
+
+        // Update form data with user info
+        setFormData({
+          name: user?.name || "",
+          email: user?.email || "",
+          bio: user?.bio || "",
+          department: user?.department || "",
+          phoneNumber: user?.phoneNumber || "",
+        });
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [user]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -22,10 +103,34 @@ const UserProfile = () => {
     });
   };
 
-  const handleSave = () => {
-    // In a real app, this would make an API call
-    console.log("Saving user profile:", formData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      // Update user profile via API
+      await usersAPI.update(user?.id || user?._id, {
+        name: formData.name,
+        bio: formData.bio,
+        department: formData.department,
+        phoneNumber: formData.phoneNumber,
+      });
+
+      // Update local storage and context
+      const authData = JSON.parse(localStorage.getItem("auth") || "{}");
+      authData.user = {
+        ...authData.user,
+        name: formData.name,
+        bio: formData.bio,
+        department: formData.department,
+        phoneNumber: formData.phoneNumber,
+      };
+      localStorage.setItem("auth", JSON.stringify(authData));
+      login(authData.user, organization);
+
+      setIsEditing(false);
+      toast.showSuccess(successMessages.profileUpdated);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.showError(handleError(error, "Update Profile"));
+    }
   };
 
   const handleCancel = () => {
@@ -45,13 +150,13 @@ const UserProfile = () => {
 
     // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert("File size must be less than 5MB");
+      toast.showError(errorMessages.fileTooLarge);
       return;
     }
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      alert("Please select an image file");
+      toast.showError(errorMessages.invalidFileType);
       return;
     }
 
@@ -75,10 +180,10 @@ const UserProfile = () => {
       // Update context
       login({ ...user, avatar: updatedUserData.avatar }, organization);
 
-      alert("Profile picture updated successfully!");
+      toast.showSuccess(successMessages.profilePictureUpdated);
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      alert("Failed to upload profile picture. Please try again.");
+      toast.showError(handleError(error, "Upload Profile Picture"));
     } finally {
       setUploading(false);
     }
@@ -217,38 +322,51 @@ const UserProfile = () => {
 
         <div className="profile-section">
           <h3>Activity Summary</h3>
-          <div className="activity-stats">
-            <div className="stat-item">
-              <span className="stat-value">24</span>
-              <span className="stat-label">Tasks Completed</span>
+          {loading ? (
+            <p>Loading statistics...</p>
+          ) : (
+            <div className="activity-stats">
+              <div className="stat-item">
+                <span className="stat-value">{userStats.completedTasks}</span>
+                <span className="stat-label">Tasks Completed</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-value">{userStats.activeTasks}</span>
+                <span className="stat-label">Active Tasks</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-value">{userStats.totalProjects}</span>
+                <span className="stat-label">Projects</span>
+              </div>
             </div>
-            <div className="stat-item">
-              <span className="stat-value">8</span>
-              <span className="stat-label">Active Tasks</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">3</span>
-              <span className="stat-label">Projects</span>
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="profile-section">
           <h3>Recent Tasks</h3>
-          <div className="recent-tasks">
-            <div className="task-item">
-              <span className="task-name">Update user interface</span>
-              <span className="task-status completed">Completed</span>
+          {loading ? (
+            <p>Loading tasks...</p>
+          ) : userTasks.length > 0 ? (
+            <div className="recent-tasks">
+              {userTasks.map((task, index) => (
+                <div
+                  key={task._id || task.id || `task-${index}`}
+                  className="task-item"
+                >
+                  <span className="task-name">{task.title}</span>
+                  <span className={`task-status ${task.status}`}>
+                    {task.status === "done"
+                      ? "Completed"
+                      : task.status === "in-progress"
+                      ? "In Progress"
+                      : "Pending"}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="task-item">
-              <span className="task-name">Review code changes</span>
-              <span className="task-status in-progress">In Progress</span>
-            </div>
-            <div className="task-item">
-              <span className="task-name">Write documentation</span>
-              <span className="task-status pending">Pending</span>
-            </div>
-          </div>
+          ) : (
+            <p>No recent tasks found.</p>
+          )}
         </div>
       </div>
     </div>

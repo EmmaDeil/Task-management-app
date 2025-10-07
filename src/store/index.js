@@ -10,6 +10,9 @@ const tasksSlice = createSlice({
     error: null,
   },
   reducers: {
+    setTasks: (state, action) => {
+      state.items = action.payload;
+    },
     addTask: (state, action) => {
       const newTask = {
         id: Date.now(),

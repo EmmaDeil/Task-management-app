@@ -1,55 +1,88 @@
 import React, { useState, useEffect } from "react";
 import ProjectForm from "./ProjectForm";
 import ProjectDetailsModal from "./ProjectDetailsModal";
+import { projectsAPI } from "../../services/api";
+import { useToast } from "../../hooks/useToast";
+import { handleError, successMessages } from "../../utils/errorHandler";
 
 const Projects = () => {
+  const toast = useToast();
   const [projects, setProjects] = useState([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [viewingProject, setViewingProject] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load projects from localStorage (you can integrate with API later)
+  // Load projects from API
   useEffect(() => {
-    const storedProjects = localStorage.getItem("projects");
-    if (storedProjects) {
-      setProjects(JSON.parse(storedProjects));
-    }
-    setLoading(false);
-  }, []);
-
-  // Save projects to localStorage
-  const saveProjects = (updatedProjects) => {
-    localStorage.setItem("projects", JSON.stringify(updatedProjects));
-    setProjects(updatedProjects);
-  };
-
-  const handleCreateProject = (projectData) => {
-    const newProject = {
-      id: Date.now(),
-      ...projectData,
-      createdAt: new Date().toISOString(),
-      tasksCount: 0,
-      completedTasks: 0,
+    const fetchProjects = async () => {
+      try {
+        setLoading(true);
+        const data = await projectsAPI.getAll();
+        setProjects(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+        toast.showError(handleError(error, "Load Projects"));
+        setProjects([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    const updatedProjects = [...projects, newProject];
-    saveProjects(updatedProjects);
-    setShowProjectForm(false);
+
+    fetchProjects();
+  }, [toast]);
+
+  const handleCreateProject = async (projectData) => {
+    try {
+      const newProject = await projectsAPI.create({
+        ...projectData,
+        createdAt: new Date().toISOString(),
+        tasksCount: 0,
+        completedTasks: 0,
+      });
+      setProjects([...projects, newProject]);
+      setShowProjectForm(false);
+      toast.showSuccess(successMessages.projectCreated);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      toast.showError(handleError(error, "Create Project"));
+    }
   };
 
-  const handleUpdateProject = (projectData) => {
-    const updatedProjects = projects.map((p) =>
-      p.id === selectedProject.id ? { ...p, ...projectData } : p
-    );
-    saveProjects(updatedProjects);
-    setSelectedProject(null);
-    setShowProjectForm(false);
+  const handleUpdateProject = async (projectData) => {
+    try {
+      const updatedProject = await projectsAPI.update(
+        selectedProject._id || selectedProject.id,
+        projectData
+      );
+      const updatedProjects = projects.map((p) =>
+        (p._id || p.id) === (selectedProject._id || selectedProject.id)
+          ? { ...p, ...updatedProject }
+          : p
+      );
+      setProjects(updatedProjects);
+      setSelectedProject(null);
+      setShowProjectForm(false);
+      toast.showSuccess(successMessages.projectUpdated);
+    } catch (error) {
+      console.error("Error updating project:", error);
+      toast.showError(handleError(error, "Update Project"));
+    }
   };
 
-  const handleDeleteProject = (projectId) => {
+  const handleDeleteProject = async (projectId) => {
     if (window.confirm("Are you sure you want to delete this project?")) {
-      const updatedProjects = projects.filter((p) => p.id !== projectId);
-      saveProjects(updatedProjects);
+      try {
+        await projectsAPI.delete(projectId);
+        const updatedProjects = projects.filter(
+          (p) => (p._id || p.id) !== projectId
+        );
+        setProjects(updatedProjects);
+        toast.showSuccess(successMessages.projectDeleted);
+      } catch (error) {
+        console.error("Error deleting project:", error);
+        toast.showError(handleError(error, "Delete Project"));
+      }
     }
   };
 
@@ -59,6 +92,7 @@ const Projects = () => {
   };
 
   const handleProjectClick = (project) => {
+    // Show project details in modal
     setViewingProject(project);
   };
 
@@ -243,14 +277,19 @@ const Projects = () => {
           onClose={() => setViewingProject(null)}
           onUpdate={(projectData) => {
             const updatedProjects = projects.map((p) =>
-              p.id === viewingProject.id ? { ...p, ...projectData } : p
+              (p._id || p.id) === (viewingProject._id || viewingProject.id)
+                ? { ...p, ...projectData }
+                : p
             );
-            saveProjects(updatedProjects);
+            setProjects(updatedProjects);
             setViewingProject({ ...viewingProject, ...projectData });
           }}
           onDelete={(projectId) => {
-            const updatedProjects = projects.filter((p) => p.id !== projectId);
-            saveProjects(updatedProjects);
+            const updatedProjects = projects.filter(
+              (p) => (p._id || p.id) !== projectId
+            );
+            setProjects(updatedProjects);
+            setViewingProject(null);
           }}
         />
       )}

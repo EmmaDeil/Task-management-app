@@ -147,4 +147,92 @@ router.post(
   }
 );
 
+// @route   PUT /api/users/:id/password
+// @desc    Change user password
+// @access  Private (own profile only)
+router.put("/:id/password", protect, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate passwords
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "Both current and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "New password must be at least 6 characters" });
+    }
+
+    // Check authorization (only own profile)
+    if (req.user._id.toString() !== req.params.id) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to change this password" });
+    }
+
+    // Get user with password
+    const user = await User.findById(req.params.id).select("+password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @route   DELETE /api/users/:id/delete-account
+// @desc    Permanently delete user account
+// @access  Private (own profile only)
+router.delete("/:id/delete-account", protect, async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    // Check authorization (only own profile)
+    if (req.user._id.toString() !== req.params.id) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this account" });
+    }
+
+    // Get user with password
+    const user = await User.findById(req.params.id).select("+password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify password
+    if (password) {
+      const isMatch = await user.matchPassword(password);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Password is incorrect" });
+      }
+    }
+
+    // Delete the user
+    await User.findByIdAndDelete(req.params.id);
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 module.exports = router;

@@ -1,16 +1,20 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../hooks/useToast";
+import { organizationsAPI } from "../../services/api";
+import { handleError, successMessages } from "../../utils/errorHandler";
 
 const OrganizationDashboard = ({ onNavigate }) => {
-  const { user, organization } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
-
-  const mockStats = {
-    totalMembers: 12,
-    activeTasks: 45,
-    completedTasks: 123,
-    projectsCount: 8,
-  };
+  const { user, organization, login } = useAuth();
+  const toast = useToast();
+  const [activeTab, setActiveTab] = useState("members");
+  const [saving, setSaving] = useState(false);
+  const [orgSettings, setOrgSettings] = useState({
+    name: organization?.name || "",
+    plan: organization?.plan || "free",
+    emailNotifications: organization?.settings?.emailNotifications ?? true,
+    weeklyReports: organization?.settings?.weeklyReports ?? false,
+  });
 
   const mockMembers = [
     {
@@ -37,51 +41,9 @@ const OrganizationDashboard = ({ onNavigate }) => {
   ];
 
   const tabs = [
-    { id: "overview", label: "Overview" },
     { id: "members", label: "Members" },
     { id: "settings", label: "Settings" },
   ];
-
-  const renderOverview = () => (
-    <div className="org-overview">
-      <div className="stats-grid">
-        <div className="stat-card">
-          <h3>{mockStats.totalMembers}</h3>
-          <p>Team Members</p>
-        </div>
-        <div className="stat-card">
-          <h3>{mockStats.activeTasks}</h3>
-          <p>Active Tasks</p>
-        </div>
-        <div className="stat-card">
-          <h3>{mockStats.completedTasks}</h3>
-          <p>Completed Tasks</p>
-        </div>
-        <div className="stat-card">
-          <h3>{mockStats.projectsCount}</h3>
-          <p>Projects</p>
-        </div>
-      </div>
-
-      <div className="recent-activity">
-        <h3>Recent Activity</h3>
-        <div className="activity-list">
-          <div className="activity-item">
-            <span>New member John Doe joined the team</span>
-            <span className="activity-time">2 hours ago</span>
-          </div>
-          <div className="activity-item">
-            <span>Task "Update homepage" was completed</span>
-            <span className="activity-time">4 hours ago</span>
-          </div>
-          <div className="activity-item">
-            <span>New project "Mobile App" created</span>
-            <span className="activity-time">1 day ago</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderMembers = () => (
     <div className="org-members">
@@ -121,17 +83,66 @@ const OrganizationDashboard = ({ onNavigate }) => {
     </div>
   );
 
+  const handleOrgSettingChange = (key, value) => {
+    setOrgSettings({ ...orgSettings, [key]: value });
+  };
+
+  const handleSaveOrgSettings = async () => {
+    try {
+      setSaving(true);
+
+      // Save organization settings to backend
+      await organizationsAPI.update(organization?._id || organization?.id, {
+        name: orgSettings.name,
+        plan: orgSettings.plan,
+        settings: {
+          emailNotifications: orgSettings.emailNotifications,
+          weeklyReports: orgSettings.weeklyReports,
+        },
+      });
+
+      // Update local storage
+      const authData = JSON.parse(localStorage.getItem("auth") || "{}");
+      authData.organization = {
+        ...authData.organization,
+        name: orgSettings.name,
+        plan: orgSettings.plan,
+        settings: {
+          emailNotifications: orgSettings.emailNotifications,
+          weeklyReports: orgSettings.weeklyReports,
+        },
+      };
+      localStorage.setItem("auth", JSON.stringify(authData));
+      login(user, authData.organization);
+
+      toast.showSuccess(successMessages.organizationUpdated);
+    } catch (error) {
+      console.error("Error saving organization settings:", error);
+      toast.showError(handleError(error, "Save Organization Settings"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const renderSettings = () => (
     <div className="org-settings">
       <div className="settings-section">
         <h3>Organization Details</h3>
         <div className="form-group">
           <label>Organization Name</label>
-          <input type="text" value={organization?.name || ""} readOnly />
+          <input
+            type="text"
+            value={orgSettings.name}
+            onChange={(e) => handleOrgSettingChange("name", e.target.value)}
+            placeholder="Enter organization name"
+          />
         </div>
         <div className="form-group">
           <label>Plan</label>
-          <select value={organization?.plan || "free"}>
+          <select
+            value={orgSettings.plan}
+            onChange={(e) => handleOrgSettingChange("plan", e.target.value)}
+          >
             <option value="free">Free</option>
             <option value="pro">Pro</option>
             <option value="enterprise">Enterprise</option>
@@ -143,20 +154,38 @@ const OrganizationDashboard = ({ onNavigate }) => {
         <h3>Preferences</h3>
         <div className="form-group">
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input
+              type="checkbox"
+              checked={orgSettings.emailNotifications}
+              onChange={(e) =>
+                handleOrgSettingChange("emailNotifications", e.target.checked)
+              }
+            />
             Email notifications for new tasks
           </label>
         </div>
         <div className="form-group">
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input
+              type="checkbox"
+              checked={orgSettings.weeklyReports}
+              onChange={(e) =>
+                handleOrgSettingChange("weeklyReports", e.target.checked)
+              }
+            />
             Weekly progress reports
           </label>
         </div>
       </div>
 
       <div className="settings-actions">
-        <button className="btn primary">Save Changes</button>
+        <button
+          className="btn primary"
+          onClick={handleSaveOrgSettings}
+          disabled={saving}
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
       </div>
     </div>
   );
@@ -192,7 +221,6 @@ const OrganizationDashboard = ({ onNavigate }) => {
       </div>
 
       <div className="dashboard-content">
-        {activeTab === "overview" && renderOverview()}
         {activeTab === "members" && renderMembers()}
         {activeTab === "settings" && renderSettings()}
       </div>

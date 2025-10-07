@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useAuth } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { notificationsAPI } from "../../services/api";
+import { notificationsAPI, projectsAPI } from "../../services/api";
 import { getImageUrl } from "../../utils/imageUtils";
 
 const Header = ({ onSidebarToggle, isSidebarOpen }) => {
@@ -26,10 +26,11 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
 
   // Fetch notifications from API
   useEffect(() => {
-    fetchNotifications();
+    // Temporarily disabled until backend notifications endpoint is ready
+    // fetchNotifications();
     // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    // const interval = setInterval(fetchNotifications, 30000);
+    // return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
@@ -47,45 +48,49 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
 
   // Handle search
   useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setSearchResults([]);
-      setProjectResults([]);
-      setShowSearchResults(false);
-      return;
-    }
+    const performSearch = async () => {
+      if (searchQuery.trim() === "") {
+        setSearchResults([]);
+        setProjectResults([]);
+        setShowSearchResults(false);
+        return;
+      }
 
-    const query = searchQuery.toLowerCase();
+      const query = searchQuery.toLowerCase();
 
-    // Search tasks
-    const filteredTasks = tasks.filter((task) => {
-      return (
-        task.title?.toLowerCase().includes(query) ||
-        task.description?.toLowerCase().includes(query) ||
-        task.assignee?.toLowerCase().includes(query) ||
-        task.priority?.toLowerCase().includes(query) ||
-        task.status?.toLowerCase().includes(query) ||
-        task.project?.toLowerCase().includes(query)
-      );
-    });
-
-    // Search projects from localStorage
-    const storedProjects = localStorage.getItem("projects");
-    let filteredProjects = [];
-
-    if (storedProjects) {
-      const projects = JSON.parse(storedProjects);
-      filteredProjects = projects.filter((project) => {
+      // Search tasks
+      const filteredTasks = tasks.filter((task) => {
         return (
-          project.name?.toLowerCase().includes(query) ||
-          project.description?.toLowerCase().includes(query) ||
-          project.status?.toLowerCase().includes(query)
+          task.title?.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query) ||
+          task.assignee?.toLowerCase().includes(query) ||
+          task.priority?.toLowerCase().includes(query) ||
+          task.status?.toLowerCase().includes(query) ||
+          task.project?.toLowerCase().includes(query)
         );
       });
-    }
 
-    setSearchResults(filteredTasks);
-    setProjectResults(filteredProjects);
-    setShowSearchResults(true);
+      // Search projects from API
+      try {
+        const projects = await projectsAPI.getAll();
+        const filteredProjects = projects.filter((project) => {
+          return (
+            project.name?.toLowerCase().includes(query) ||
+            project.description?.toLowerCase().includes(query) ||
+            project.status?.toLowerCase().includes(query)
+          );
+        });
+        setProjectResults(filteredProjects);
+      } catch (error) {
+        console.error("Error fetching projects for search:", error);
+        setProjectResults([]);
+      }
+
+      setSearchResults(filteredTasks);
+      setShowSearchResults(true);
+    };
+
+    performSearch();
   }, [searchQuery, tasks]);
 
   // Handle click outside
@@ -158,15 +163,12 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   };
 
   const handleProjectResultClick = (project) => {
-    // Navigate to projects page
-    navigate("/projects");
+    // Navigate to project details page
+    navigate(`/projects/${project._id || project.id}`);
 
     // Close search dropdown
     setShowSearchResults(false);
     setSearchQuery("");
-
-    // Optional: Store selected project ID
-    sessionStorage.setItem("selectedProjectId", project.id);
   };
 
   const handleNotificationClick = async (notification) => {
@@ -567,7 +569,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                   <button
                     className="user-menu-item"
                     onClick={() => {
-                      navigate("/profile");
+                      navigate("/settings");
                       setShowUserMenu(false);
                     }}
                   >
@@ -585,7 +587,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                   <button
                     className="user-menu-item"
                     onClick={() => {
-                      window.open("https://github.com", "_blank");
+                      navigate("/help");
                       setShowUserMenu(false);
                     }}
                   >

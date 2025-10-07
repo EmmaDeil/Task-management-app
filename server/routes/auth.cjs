@@ -8,7 +8,24 @@ const { protect } = require("../middleware/auth.cjs");
 // Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE,
+    expiresIn: process.env.JWT_EXPIRE || "15m",
+  });
+};
+
+// Generate Refresh Token
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: process.env.JWT_REFRESH_EXPIRE || "7d",
+  });
+};
+
+// Set refresh token cookie
+const setRefreshTokenCookie = (res, refreshToken) => {
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true, // Cannot be accessed by JavaScript
+    secure: process.env.NODE_ENV === "production", // HTTPS only in production
+    sameSite: "lax", // CSRF protection
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
@@ -91,9 +108,18 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Account has been deactivated" });
     }
 
-    // Return user data and token
+    // Generate tokens
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
+    // Save refresh token to database
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    // Set refresh token in httpOnly cookie
+    setRefreshTokenCookie(res, refreshToken);
+
+    // Return user data and access token
     res.json({
       token,
       user: {
@@ -187,9 +213,18 @@ router.post("/organization/register", async (req, res) => {
       role: "admin",
     });
 
-    // Return user data and token
+    // Generate tokens
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
+    // Save refresh token to database
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    // Set refresh token in httpOnly cookie
+    setRefreshTokenCookie(res, refreshToken);
+
+    // Return user data and access token
     res.status(201).json({
       token,
       user: {
@@ -212,6 +247,79 @@ router.post("/organization/register", async (req, res) => {
         "Server error during organization registration. Please try again.",
       error: error.message,
     });
+  }
+});
+
+// @route   POST /api/auth/refresh
+// @desc    Refresh access token using refresh token
+// @access  Public
+router.post("/refresh", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "No refresh token provided" });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // Find user and verify refresh token matches
+    const user = await User.findById(decoded.id)
+      .select("+refreshToken")
+      .populate("organization");
+
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Check if user is still active
+    if (!user.isActive) {
+      return res.status(401).json({ message: "Account has been deactivated" });
+    }
+
+    // Generate new access token
+    const newAccessToken = generateToken(user._id);
+
+    res.json({
+      token: newAccessToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        organization: {
+          id: user.organization._id,
+          name: user.organization.name,
+          domain: user.organization.domain,
+          plan: user.organization.plan,
+        },
+      },
+    });
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ message: "Refresh token expired. Please log in again." });
+    }
+    res.status(401).json({ message: "Invalid refresh token" });
+  }
+});
+
+// @route   POST /api/auth/logout
+// @desc    Logout user and clear refresh token
+// @access  Private
+router.post("/logout", protect, async (req, res) => {
+  try {
+    // Clear refresh token from database
+    await User.findByIdAndUpdate(req.user._id, { refreshToken: null });
+
+    // Clear refresh token cookie
+    res.clearCookie("refreshToken");
+
+    res.json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 

@@ -1,5 +1,6 @@
 import React, { useReducer, useEffect } from "react";
 import { AuthContext } from "../../contexts/AuthContext";
+import { authAPI } from "../../services/api";
 
 const authReducer = (state, action) => {
   switch (action.type) {
@@ -64,10 +65,18 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: "LOGIN", payload: authData });
   };
 
-  const logout = () => {
-    localStorage.removeItem("auth");
-    localStorage.removeItem("token");
-    dispatch({ type: "LOGOUT" });
+  const logout = async () => {
+    try {
+      // Call backend to clear refresh token
+      await authAPI.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      // Always clear frontend auth state
+      localStorage.removeItem("auth");
+      localStorage.removeItem("token");
+      dispatch({ type: "LOGOUT" });
+    }
   };
 
   const setOrganization = (orgData) => {

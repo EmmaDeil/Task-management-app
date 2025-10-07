@@ -25,7 +25,6 @@ const TaskForm = ({
         setProjects(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching projects:", err);
-        alert("Failed to load projects. Please refresh the page.");
         setProjects([]);
       } finally {
         setLoadingProjects(false);
