@@ -4,7 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { authAPI } from "../../services/api";
 
-const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
+const Login = ({
+  onSwitchToRegister,
+  onSwitchToOrgSignup,
+  onSwitchToForgotPassword,
+}) => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -89,6 +93,16 @@ const Login = ({ onSwitchToRegister, onSwitchToOrgSignup }) => {
             {errors.password && (
               <span className="field-error">{errors.password.message}</span>
             )}
+            <div style={{ textAlign: "right", marginTop: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={onSwitchToForgotPassword}
+                className="link-button"
+                style={{ fontSize: "0.875rem", color: "#3b82f6" }}
+              >
+                Forgot Password?
+              </button>
+            </div>
           </div>
 
           <button

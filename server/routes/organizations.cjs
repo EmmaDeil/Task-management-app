@@ -4,6 +4,21 @@ const Organization = require("../models/Organization.cjs");
 const User = require("../models/User.cjs");
 const { protect, authorize } = require("../middleware/auth.cjs");
 
+// @route   GET /api/organizations
+// @desc    Get all organizations (for registration)
+// @access  Public
+router.get("/", async (req, res) => {
+  try {
+    const organizations = await Organization.find({}, "name domain plan").sort({
+      name: 1,
+    });
+
+    res.json(organizations);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 // @route   GET /api/organizations/:id
 // @desc    Get organization details
 // @access  Private

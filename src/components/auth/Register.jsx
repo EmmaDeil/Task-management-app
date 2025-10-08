@@ -1,48 +1,116 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { authAPI, organizationsAPI } from "../../services/api";
+import { useToast } from "../../hooks/useToast";
 
 const Register = ({ onSwitchToLogin }) => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [organizations, setOrganizations] = useState([]);
+  const [selectedOrg, setSelectedOrg] = useState(null);
 
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
+    setError: setFormError,
   } = useForm();
 
   const password = watch("password");
   const watchedName = watch("name");
+  const watchedEmail = watch("email");
+  const watchedOrgId = watch("organizationId");
+
+  // Fetch organizations on mount
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const orgs = await organizationsAPI.getAll();
+        setOrganizations(orgs);
+      } catch (err) {
+        console.error("Error fetching organizations:", err);
+        toast.showError("Failed to load organizations");
+      }
+    };
+    fetchOrganizations();
+  }, [toast]);
+
+  // Update selected organization when dropdown changes
+  useEffect(() => {
+    if (watchedOrgId) {
+      const org = organizations.find((o) => o._id === watchedOrgId);
+      setSelectedOrg(org);
+    }
+  }, [watchedOrgId, organizations]);
+
+  // Validate email domain against organization domain
+  const validateEmailDomain = (email, org) => {
+    if (!email || !org || !org.domain) return true;
+
+    const emailDomain = email.split("@")[1]?.toLowerCase();
+    const orgDomain = org.domain.toLowerCase();
+
+    return emailDomain === orgDomain;
+  };
 
   const onSubmit = async (data) => {
     setIsLoading(true);
-    setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Find selected organization
+      const organization = organizations.find(
+        (o) => o._id === data.organizationId
+      );
 
-      // Mock successful registration
-      const mockUser = {
-        id: Date.now(),
-        email: data.email,
-        name: data.name,
-        role: "member",
+      if (!organization) {
+        toast.showError("Please select an organization");
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate email domain matches organization domain
+      if (!validateEmailDomain(data.email, organization)) {
+        setFormError("email", {
+          type: "manual",
+          message: `Email must be from ${organization.domain} domain to join ${organization.name}`,
+        });
+        toast.showError(
+          `Email domain must match ${organization.domain} to join this organization`
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Register with real API
+      const response = await authAPI.register(
+        data.name,
+        data.email,
+        data.password,
+        data.organizationId
+      );
+
+      // Store auth data
+      const authData = {
+        token: response.token,
+        user: response.user,
+        organization: response.user.organization,
       };
+      localStorage.setItem("auth", JSON.stringify(authData));
 
-      // For registration, user needs to join an existing organization
-      // This would typically involve an invitation system
-      const mockOrganization = null;
+      // Update auth context
+      login(response.user, response.user.organization);
 
-      login(mockUser, mockOrganization);
+      toast.showSuccess(`Welcome to ${organization.name}!`);
       navigate("/dashboard");
-    } catch {
-      setError("Registration failed. Please try again.");
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || "Registration failed. Please try again.";
+      toast.showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -55,10 +123,8 @@ const Register = ({ onSwitchToLogin }) => {
         <p className="auth-subtitle">
           {watchedName
             ? "Complete your registration below"
-            : "Join TaskFlow today"}
+            : "Join your organization on TaskFlow"}
         </p>
-
-        {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
           <div className="form-group">
@@ -74,9 +140,39 @@ const Register = ({ onSwitchToLogin }) => {
                 },
               })}
               className={errors.name ? "error" : ""}
+              placeholder="Enter your full name"
             />
             {errors.name && (
               <span className="field-error">{errors.name.message}</span>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="organizationId">Organization</label>
+            <select
+              id="organizationId"
+              {...register("organizationId", {
+                required: "Please select an organization",
+              })}
+              className={errors.organizationId ? "error" : ""}
+            >
+              <option value="">Select your organization</option>
+              {organizations.map((org) => (
+                <option key={org._id} value={org._id}>
+                  {org.name} ({org.domain})
+                </option>
+              ))}
+            </select>
+            {errors.organizationId && (
+              <span className="field-error">
+                {errors.organizationId.message}
+              </span>
+            )}
+            {selectedOrg && (
+              <small style={{ color: "#6b7280", marginTop: "0.5rem" }}>
+                ℹ️ Your email must be from @{selectedOrg.domain} to join this
+                organization
+              </small>
             )}
           </div>
 
@@ -93,10 +189,22 @@ const Register = ({ onSwitchToLogin }) => {
                 },
               })}
               className={errors.email ? "error" : ""}
+              placeholder={
+                selectedOrg
+                  ? `yourname@${selectedOrg.domain}`
+                  : "Enter your email"
+              }
             />
             {errors.email && (
               <span className="field-error">{errors.email.message}</span>
             )}
+            {watchedEmail &&
+              selectedOrg &&
+              !validateEmailDomain(watchedEmail, selectedOrg) && (
+                <span className="field-error">
+                  ⚠️ Email must be from @{selectedOrg.domain} domain
+                </span>
+              )}
           </div>
 
           <div className="form-group">
@@ -107,11 +215,12 @@ const Register = ({ onSwitchToLogin }) => {
               {...register("password", {
                 required: "Password is required",
                 minLength: {
-                  value: 8,
-                  message: "Password must be at least 8 characters",
+                  value: 6,
+                  message: "Password must be at least 6 characters",
                 },
               })}
               className={errors.password ? "error" : ""}
+              placeholder="Create a strong password"
             />
             {errors.password && (
               <span className="field-error">{errors.password.message}</span>
@@ -129,6 +238,7 @@ const Register = ({ onSwitchToLogin }) => {
                   value === password || "Passwords do not match",
               })}
               className={errors.confirmPassword ? "error" : ""}
+              placeholder="Re-enter your password"
             />
             {errors.confirmPassword && (
               <span className="field-error">
@@ -139,8 +249,9 @@ const Register = ({ onSwitchToLogin }) => {
 
           <button
             type="submit"
+            aria-label="Create Account"
             disabled={isLoading}
-            className="auth-button primary"
+            className="auth-button btn btn-primary"
           >
             {isLoading ? "Creating account..." : "Create Account"}
           </button>

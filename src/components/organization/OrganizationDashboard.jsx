@@ -205,7 +205,7 @@ const OrganizationDashboard = ({ onNavigate }) => {
     <div className="organization-dashboard">
       <div className="dashboard-header">
         <h1>{organization.name}</h1>
-        <p>Welcome back, {user?.name}</p>
+        <p>Welcome, {user?.name}</p>
       </div>
 
       <div className="dashboard-tabs">

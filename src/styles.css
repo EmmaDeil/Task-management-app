@@ -2507,6 +2507,84 @@ body {
   margin-left: 0.25rem;
 }
 
+/* Invite Signup Specific Styles */
+.invite-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.invite-header h2 {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.invite-info-box {
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.invite-info-box p {
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+}
+
+.invite-info-box strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.invite-info-box .badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-box {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.error-box h2 {
+  color: var(--danger-color);
+  margin-bottom: 1rem;
+}
+
+.error-box .error-message {
+  margin-bottom: 1.5rem;
+}
+
 /* Button Styles */
 .btn {
   padding: 0.75rem 1.5rem;
@@ -2890,7 +2968,7 @@ body {
 }
 
 @media (max-width: 480px) {
- .board-actions {
+  .board-actions {
     /* flex-direction: column; */
     /* align-items: stretch; */
     width: 100%;
@@ -3681,7 +3759,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0;
-  margin-top: -1rem ;
+  margin-top: -1rem;
 }
 
 .profile-header {
@@ -4833,6 +4911,7 @@ body {
   margin-bottom: 2rem;
   background: white;
   padding: 0.5rem;
+  width: 50%;
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
 }
@@ -4862,6 +4941,7 @@ body {
 .dashboard-content {
   background: white;
   padding: 2rem;
+  /* width: 100% !important; */
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
 }

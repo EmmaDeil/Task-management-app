@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSelector } from "react-redux";
 import { useAuth } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { notificationsAPI, projectsAPI } from "../../services/api";
+import { notificationsAPI, projectsAPI, tasksAPI } from "../../services/api";
 import { getImageUrl } from "../../utils/imageUtils";
 
 const Header = ({ onSidebarToggle, isSidebarOpen }) => {
@@ -20,9 +19,9 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
   const searchRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
-  // Get tasks from Redux store
-  const tasks = useSelector((state) => state.tasks.items);
+  // Get tasks from Redux store - REMOVED (now using backend search)
 
   // Fetch notifications from API
   useEffect(() => {
@@ -46,52 +45,50 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
     }
   };
 
-  // Handle search
+  // Handle search - Use backend API instead of client-side filtering
   useEffect(() => {
-    const performSearch = async () => {
-      if (searchQuery.trim() === "") {
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchQuery.trim() === "") {
+      setSearchResults([]);
+      setProjectResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    // Debounce search requests
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log("🔍 Searching for:", searchQuery);
+
+        // Search tasks using backend API
+        const tasks = await tasksAPI.search(searchQuery);
+        console.log("✅ Tasks found:", tasks);
+        setSearchResults(tasks);
+
+        // Search projects using backend API
+        const projects = await projectsAPI.search(searchQuery);
+        console.log("✅ Projects found:", projects);
+        setProjectResults(projects);
+
+        setShowSearchResults(true);
+      } catch (error) {
+        console.error("❌ Error performing search:", error);
         setSearchResults([]);
         setProjectResults([]);
-        setShowSearchResults(false);
-        return;
       }
+    }, 300); // 300ms debounce
 
-      const query = searchQuery.toLowerCase();
-
-      // Search tasks
-      const filteredTasks = tasks.filter((task) => {
-        return (
-          task.title?.toLowerCase().includes(query) ||
-          task.description?.toLowerCase().includes(query) ||
-          task.assignee?.toLowerCase().includes(query) ||
-          task.priority?.toLowerCase().includes(query) ||
-          task.status?.toLowerCase().includes(query) ||
-          task.project?.toLowerCase().includes(query)
-        );
-      });
-
-      // Search projects from API
-      try {
-        const projects = await projectsAPI.getAll();
-        const filteredProjects = projects.filter((project) => {
-          return (
-            project.name?.toLowerCase().includes(query) ||
-            project.description?.toLowerCase().includes(query) ||
-            project.status?.toLowerCase().includes(query)
-          );
-        });
-        setProjectResults(filteredProjects);
-      } catch (error) {
-        console.error("Error fetching projects for search:", error);
-        setProjectResults([]);
+    // Cleanup timeout on unmount
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
-
-      setSearchResults(filteredTasks);
-      setShowSearchResults(true);
     };
-
-    performSearch();
-  }, [searchQuery, tasks]);
+  }, [searchQuery]);
 
   // Handle click outside
   useEffect(() => {
@@ -159,7 +156,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
     setSearchQuery("");
 
     // Optional: Store selected task ID to highlight it
-    sessionStorage.setItem("selectedTaskId", task.id);
+    sessionStorage.setItem("selectedTaskId", task._id || task.id);
   };
 
   const handleProjectResultClick = (project) => {
@@ -297,7 +294,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                   <div className="search-results-list">
                     {projectResults.map((project) => (
                       <div
-                        key={project.id}
+                        key={project._id || project.id}
                         className="search-result-item"
                         onClick={() => handleProjectResultClick(project)}
                         style={{ cursor: "pointer" }}
@@ -358,7 +355,7 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                   <div className="search-results-list">
                     {searchResults.map((task) => (
                       <div
-                        key={task.id}
+                        key={task._id || task.id}
                         className="search-result-item"
                         onClick={() => handleSearchResultClick(task)}
                         style={{ cursor: "pointer" }}
@@ -424,21 +421,8 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
               {/* No results message */}
               {searchResults.length === 0 && projectResults.length === 0 && (
                 <div className="search-no-results">
-                  {tasks.length === 0 ? (
-                    <>
-                      <p>No tasks or projects available yet</p>
-                      <small>
-                        Create your first task or project to get started!
-                      </small>
-                    </>
-                  ) : (
-                    <>
-                      <p>No results found matching "{searchQuery}"</p>
-                      <small>
-                        Try different keywords or check your spelling
-                      </small>
-                    </>
-                  )}
+                  <p>No results found matching "{searchQuery}"</p>
+                  <small>Try different keywords or check your spelling</small>
                 </div>
               )}
             </div>

@@ -4,6 +4,10 @@ const crypto = require("crypto");
 const Organization = require("../models/Organization.cjs");
 const User = require("../models/User.cjs");
 const { protect, authorize } = require("../middleware/auth.cjs");
+const {
+  sendInvitationEmail,
+  sendWelcomeEmail,
+} = require("../utils/emailService.cjs");
 
 // Invitation model (simple in-memory or could be MongoDB model)
 // For production, create a proper Invitation model
@@ -46,11 +50,27 @@ router.post("/create", protect, authorize("admin"), async (req, res) => {
       process.env.FRONTEND_URL || "http://localhost:5173"
     }/auth?invite=${inviteCode}`;
 
+    // Get organization details for email
+    const organization = await Organization.findById(req.user.organization._id);
+
+    // Send invitation email
+    const emailResult = await sendInvitationEmail({
+      email,
+      inviteLink,
+      organizationName: organization.name,
+      role,
+      invitedBy: req.user.name,
+    });
+
     res.json({
       message: "Invitation created successfully",
       inviteCode,
       inviteLink,
       expiresAt,
+      emailSent: emailResult.sent,
+      emailInfo: emailResult.sent
+        ? "Invitation email sent successfully"
+        : emailResult.reason || "Email could not be sent",
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -144,6 +164,13 @@ router.post("/accept/:code", async (req, res) => {
 
     // Get organization details
     const organization = await Organization.findById(invitation.organizationId);
+
+    // Send welcome email
+    await sendWelcomeEmail({
+      email: user.email,
+      name: user.name,
+      organizationName: organization.name,
+    });
 
     res.status(201).json({
       token,

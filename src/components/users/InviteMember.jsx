@@ -36,7 +36,24 @@ const InviteMember = ({ onClose }) => {
 
     try {
       const response = await invitesAPI.create(email, role);
-      setSuccess("Invitation created successfully!");
+
+      // Show success message with email status
+      if (response.emailSent) {
+        setSuccess(
+          `Invitation created successfully! An email has been sent to ${email} with the signup link.`
+        );
+        toast.showSuccess(`Invitation sent to ${email}`);
+      } else {
+        setSuccess(
+          `Invitation created successfully! ${
+            response.emailInfo || "Please share the link manually."
+          }`
+        );
+        toast.showWarning(
+          "Invitation created, but email could not be sent. Share the link manually."
+        );
+      }
+
       setInviteLink(response.inviteLink);
       setEmail("");
       setRole("member");

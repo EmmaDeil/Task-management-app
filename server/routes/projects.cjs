@@ -8,9 +8,23 @@ const { protect, authorize } = require("../middleware/auth.cjs");
 // @access  Private
 router.get("/", protect, async (req, res) => {
   try {
-    const projects = await Project.find({
+    const { search } = req.query;
+
+    // Build query
+    const query = {
       organization: req.user.organization._id,
-    })
+    };
+
+    // Add search if provided
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { status: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const projects = await Project.find(query)
       .populate("createdBy", "name email")
       .sort({ createdAt: -1 });
 

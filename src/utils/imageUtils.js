@@ -5,9 +5,18 @@ export const getApiBaseUrl = () => {
   );
 };
 
-// Get full image URL from relative path
-export const getImageUrl = (relativePath) => {
-  if (!relativePath) return null;
-  if (relativePath.startsWith("http")) return relativePath;
-  return `${getApiBaseUrl()}${relativePath}`;
+// Get full image URL from relative path or file ID
+export const getImageUrl = (pathOrFileId) => {
+  if (!pathOrFileId) return null;
+
+  // If it's already a full URL
+  if (pathOrFileId.startsWith("http")) return pathOrFileId;
+
+  // If it's a file ID (MongoDB ObjectId format - 24 hex characters)
+  if (/^[0-9a-fA-F]{24}$/.test(pathOrFileId)) {
+    return `${getApiBaseUrl()}/api/files/${pathOrFileId}`;
+  }
+
+  // Legacy: If it's a relative path (starts with /)
+  return `${getApiBaseUrl()}${pathOrFileId}`;
 };

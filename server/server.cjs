@@ -35,6 +35,7 @@ app.use("/api/organizations", require("./routes/organizations.cjs"));
 app.use("/api/users", require("./routes/users.cjs"));
 app.use("/api/notifications", require("./routes/notifications.cjs"));
 app.use("/api/invites", require("./routes/invites.cjs"));
+app.use("/api/files", require("./routes/files.cjs"));
 
 // Health check
 app.get("/api/health", (req, res) => {

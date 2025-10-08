@@ -190,12 +190,36 @@ export const authAPI = {
     const response = await api.post("/auth/refresh");
     return response.data;
   },
+
+  forgotPassword: async (email) => {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  validateResetToken: async (token) => {
+    const response = await api.get(`/auth/reset-password/${token}`);
+    return response.data;
+  },
+
+  resetPassword: async (token, newPassword) => {
+    const response = await api.post(`/auth/reset-password/${token}`, {
+      password: newPassword,
+    });
+    return response.data;
+  },
 };
 
 // Tasks API
 export const tasksAPI = {
   getAll: async (filters = {}) => {
     const response = await api.get("/tasks", { params: filters });
+    return response.data;
+  },
+
+  search: async (searchQuery) => {
+    const response = await api.get("/tasks", {
+      params: { search: searchQuery },
+    });
     return response.data;
   },
 
@@ -227,6 +251,11 @@ export const tasksAPI = {
 
 // Organizations API
 export const organizationsAPI = {
+  getAll: async () => {
+    const response = await api.get("/organizations");
+    return response.data;
+  },
+
   getById: async (id) => {
     const response = await api.get(`/organizations/${id}`);
     return response.data;
@@ -267,14 +296,59 @@ export const usersAPI = {
 
   uploadAvatar: async (file) => {
     const formData = new FormData();
-    formData.append("avatar", file);
+    formData.append("file", file);
+    formData.append("fileType", "avatar");
 
-    const response = await api.post("/users/upload-avatar", formData, {
+    const response = await api.post("/files/upload", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     });
     return response.data;
+  },
+};
+
+// Files API
+export const filesAPI = {
+  upload: async (file, fileType = "attachment") => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("fileType", fileType);
+
+    const response = await api.post("/files/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/files/${id}`, {
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  getMetadata: async (id) => {
+    const response = await api.get(`/files/metadata/${id}`);
+    return response.data;
+  },
+
+  getAll: async (fileType) => {
+    const response = await api.get("/files", {
+      params: fileType ? { fileType } : {},
+    });
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/files/${id}`);
+    return response.data;
+  },
+
+  getFileUrl: (fileId) => {
+    return `${API_URL}/files/${fileId}`;
   },
 };
 
@@ -323,11 +397,8 @@ export const invitesAPI = {
     return response.data;
   },
 
-  accept: async (code, name, password) => {
-    const response = await api.post(`/invites/accept/${code}`, {
-      name,
-      password,
-    });
+  accept: async (code, userData) => {
+    const response = await api.post(`/invites/accept/${code}`, userData);
     return response.data;
   },
 
@@ -346,6 +417,13 @@ export const invitesAPI = {
 export const projectsAPI = {
   getAll: async () => {
     const response = await api.get("/projects");
+    return response.data;
+  },
+
+  search: async (searchQuery) => {
+    const response = await api.get("/projects", {
+      params: { search: searchQuery },
+    });
     return response.data;
   },
 
