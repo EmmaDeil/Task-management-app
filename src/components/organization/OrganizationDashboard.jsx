@@ -1,12 +1,14 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
 import { organizationsAPI } from "../../services/api";
 import { handleError, successMessages } from "../../utils/errorHandler";
 
-const OrganizationDashboard = ({ onNavigate }) => {
+const OrganizationDashboard = () => {
   const { user, organization, login } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("members");
   const [saving, setSaving] = useState(false);
   const [orgSettings, setOrgSettings] = useState({
@@ -21,14 +23,14 @@ const OrganizationDashboard = ({ onNavigate }) => {
 
   const tabs = [
     { id: "members", label: "Members" },
-    { id: "settings", label: "Settings" }
+    { id: "settings", label: "Settings" },
   ];
 
   const renderMembers = () => (
     <div className="org-members" style={{}}>
       <div className="members-header">
         <h3>Team Members</h3>
-        <button className="btn primary" onClick={() => onNavigate("invite")}>
+        <button className="btn primary" onClick={() => navigate("/team")}>
           Manage Team
         </button>
       </div>
