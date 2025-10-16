@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import TaskForm from "./TaskForm";
-import { tasksAPI } from "../../services/api";
+import { tasksAPI, organizationsAPI } from "../../services/api";
 import { useToast } from "../../hooks/useToast";
+import { useAuth } from "../../hooks/useAuth";
 
 const TaskDetails = ({
   task,
@@ -12,9 +13,12 @@ const TaskDetails = ({
   columns,
 }) => {
   const toast = useToast();
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isAddingComment, setIsAddingComment] = useState(false);
+  const [showAddCollaborator, setShowAddCollaborator] = useState(false);
+  const [orgUsers, setOrgUsers] = useState([]);
 
   // Safely initialize comments, ensuring they have proper structure
   const [comments, setComments] = useState(() => {
@@ -32,15 +36,6 @@ const TaskDetails = ({
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionStartPos, setMentionStartPos] = useState(0);
   const commentInputRef = useRef(null);
-
-  // Test collaborators data
-  const testCollaborators = [
-    { id: 1, name: "John Doe", username: "jdoe" },
-    { id: 2, name: "Jane Smith", username: "jsmith" },
-    { id: 3, name: "Bob Johnson", username: "bjohnson" },
-    { id: 4, name: "Alice Williams", username: "awilliams" },
-    { id: 5, name: "Charlie Brown", username: "cbrown" },
-  ];
 
   // Update comments when task prop changes (after parent updates it)
   useEffect(() => {
@@ -93,6 +88,50 @@ const TaskDetails = ({
     const taskId = task._id || task.id;
     onDelete(taskId);
     onClose();
+  };
+
+  // Fetch organization users
+  useEffect(() => {
+    const fetchOrgUsers = async () => {
+      try {
+        if (user?.organization?._id) {
+          const users = await organizationsAPI.getUsers(user.organization._id);
+          setOrgUsers(users);
+        }
+      } catch (error) {
+        console.error("Error fetching organization users:", error);
+      }
+    };
+    fetchOrgUsers();
+  }, [user]);
+
+  const handleAddCollaborator = async (userId) => {
+    try {
+      const taskId = task._id || task.id;
+      const updatedTask = await tasksAPI.addCollaborator(taskId, userId);
+      onUpdate(updatedTask);
+      setShowAddCollaborator(false);
+      toast.showSuccess("Collaborator added successfully");
+    } catch (error) {
+      console.error("Error adding collaborator:", error);
+      toast.showError(
+        error.response?.data?.message || "Failed to add collaborator"
+      );
+    }
+  };
+
+  const handleRemoveCollaborator = async (userId) => {
+    try {
+      const taskId = task._id || task.id;
+      const updatedTask = await tasksAPI.removeCollaborator(taskId, userId);
+      onUpdate(updatedTask);
+      toast.showSuccess("Collaborator removed successfully");
+    } catch (error) {
+      console.error("Error removing collaborator:", error);
+      toast.showError(
+        error.response?.data?.message || "Failed to remove collaborator"
+      );
+    }
   };
 
   const handleStatusChange = (newStatus) => {
@@ -195,14 +234,17 @@ const TaskDetails = ({
     }, 0);
   };
 
-  // Filter collaborators based on query
+  // Filter collaborators based on query (use real collaborators or orgUsers)
+  const collaborators = Array.isArray(task.collaborators)
+    ? task.collaborators
+    : [];
   const filteredCollaborators = mentionQuery
-    ? testCollaborators.filter(
+    ? collaborators.filter(
         (c) =>
-          c.name.toLowerCase().includes(mentionQuery) ||
-          c.username.toLowerCase().includes(mentionQuery)
+          (c.name?.toLowerCase() || "").includes(mentionQuery) ||
+          (c.username?.toLowerCase() || "").includes(mentionQuery)
       )
-    : testCollaborators;
+    : collaborators;
 
   // Parse comment text to highlight @mentions
   const renderCommentText = (text) => {
@@ -342,6 +384,85 @@ const TaskDetails = ({
               ) : (
                 <p>Unassigned</p>
               )}
+            </section>
+
+            <section className="collaborators-section">
+              <div className="section-header">
+                <h4>Collaborators</h4>
+                {(task.assignee?._id === user?._id ||
+                  task.createdBy?._id === user?._id) && (
+                  <button
+                    className="add-collaborator-btn"
+                    onClick={() => setShowAddCollaborator(!showAddCollaborator)}
+                    title="Add collaborator"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+
+              {showAddCollaborator && (
+                <div className="add-collaborator-dropdown">
+                  {orgUsers
+                    .filter(
+                      (orgUser) =>
+                        orgUser._id !== task.assignee?._id &&
+                        !task.collaborators?.some(
+                          (collab) => collab._id === orgUser._id
+                        )
+                    )
+                    .map((orgUser) => (
+                      <div
+                        key={orgUser._id}
+                        className="user-option"
+                        onClick={() => handleAddCollaborator(orgUser._id)}
+                      >
+                        <div className="user-avatar-small">
+                          {orgUser.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span>{orgUser.name}</span>
+                      </div>
+                    ))}
+                  {orgUsers.filter(
+                    (orgUser) =>
+                      orgUser._id !== task.assignee?._id &&
+                      !task.collaborators?.some(
+                        (collab) => collab._id === orgUser._id
+                      )
+                  ).length === 0 && (
+                    <p className="no-users">No users available</p>
+                  )}
+                </div>
+              )}
+
+              <div className="collaborators-list">
+                {task.collaborators && task.collaborators.length > 0 ? (
+                  task.collaborators.map((collaborator) => (
+                    <div key={collaborator._id} className="collaborator-item">
+                      <div className="collaborator-info">
+                        <div className="collaborator-avatar">
+                          {collaborator.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span>{collaborator.name}</span>
+                      </div>
+                      {(task.assignee?._id === user?._id ||
+                        task.createdBy?._id === user?._id) && (
+                        <button
+                          className="remove-btn"
+                          onClick={() =>
+                            handleRemoveCollaborator(collaborator._id)
+                          }
+                          title="Remove collaborator"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-collaborators">No collaborators</p>
+                )}
+              </div>
             </section>
 
             <section className="status-section">

@@ -247,6 +247,16 @@ export const tasksAPI = {
     const response = await api.post(`/tasks/${id}/comments`, { text });
     return response.data;
   },
+
+  addCollaborator: async (id, userId) => {
+    const response = await api.post(`/tasks/${id}/collaborators`, { userId });
+    return response.data;
+  },
+
+  removeCollaborator: async (id, userId) => {
+    const response = await api.delete(`/tasks/${id}/collaborators/${userId}`);
+    return response.data;
+  },
 };
 
 // Organizations API
@@ -449,6 +459,20 @@ export const projectsAPI = {
 
   delete: async (id) => {
     const response = await api.delete(`/projects/${id}`);
+    return response.data;
+  },
+
+  addCollaborator: async (id, userId) => {
+    const response = await api.post(`/projects/${id}/collaborators`, {
+      userId,
+    });
+    return response.data;
+  },
+
+  removeCollaborator: async (id, userId) => {
+    const response = await api.delete(
+      `/projects/${id}/collaborators/${userId}`
+    );
     return response.data;
   },
 };

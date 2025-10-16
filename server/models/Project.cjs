@@ -36,6 +36,12 @@ const projectSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    collaborators: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     tasksCount: {
       type: Number,
       default: 0,

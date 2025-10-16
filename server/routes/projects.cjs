@@ -26,6 +26,7 @@ router.get("/", protect, async (req, res) => {
 
     const projects = await Project.find(query)
       .populate("createdBy", "name email")
+      .populate("collaborators", "name email")
       .sort({ createdAt: -1 });
 
     res.json(projects);
@@ -39,10 +40,9 @@ router.get("/", protect, async (req, res) => {
 // @access  Private
 router.get("/:id", protect, async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id).populate(
-      "createdBy",
-      "name email"
-    );
+    const project = await Project.findById(req.params.id)
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email");
 
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
@@ -75,10 +75,9 @@ router.post("/", protect, authorize("admin", "manager"), async (req, res) => {
     };
 
     const project = await Project.create(projectData);
-    const populatedProject = await Project.findById(project._id).populate(
-      "createdBy",
-      "name email"
-    );
+    const populatedProject = await Project.findById(project._id)
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email");
 
     res.status(201).json(populatedProject);
   } catch (error) {
@@ -110,7 +109,9 @@ router.put("/:id", protect, authorize("admin", "manager"), async (req, res) => {
     project = await Project.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
-    }).populate("createdBy", "name email");
+    })
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email");
 
     res.json(project);
   } catch (error) {
@@ -150,5 +151,79 @@ router.delete(
     }
   }
 );
+
+// @route   POST /api/projects/:id/collaborators
+// @desc    Add collaborator to project
+// @access  Private
+router.post("/:id/collaborators", protect, async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Check if user is creator
+    if (project.createdBy.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Only project creator can add collaborators" });
+    }
+
+    // Check if collaborator already exists
+    if (project.collaborators.includes(userId)) {
+      return res
+        .status(400)
+        .json({ message: "User is already a collaborator" });
+    }
+
+    project.collaborators.push(userId);
+    await project.save();
+
+    const updatedProject = await Project.findById(project._id)
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email");
+
+    res.json(updatedProject);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @route   DELETE /api/projects/:id/collaborators/:userId
+// @desc    Remove collaborator from project
+// @access  Private
+router.delete("/:id/collaborators/:userId", protect, async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Check if user is creator
+    if (project.createdBy.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Only project creator can remove collaborators" });
+    }
+
+    project.collaborators = project.collaborators.filter(
+      (collab) => collab.toString() !== req.params.userId
+    );
+
+    await project.save();
+
+    const updatedProject = await Project.findById(project._id)
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email");
+
+    res.json(updatedProject);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
 
 module.exports = router;

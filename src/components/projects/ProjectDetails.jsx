@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
+import { useAuth } from "../../hooks/useAuth";
 import ProjectForm from "./ProjectForm";
-import { projectsAPI } from "../../services/api";
+import { projectsAPI, organizationsAPI } from "../../services/api";
 import { handleError } from "../../utils/errorHandler";
 
 const ProjectDetails = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showAddCollaborator, setShowAddCollaborator] = useState(false);
+  const [orgUsers, setOrgUsers] = useState([]);
   const [editing, setEditing] = useState({
     name: false,
     description: false,
@@ -112,6 +116,54 @@ const ProjectDetails = () => {
         setProject({ ...project, [field]: editValues[field] });
         setEditing({ ...editing, [field]: false });
       }
+    }
+  };
+
+  // Fetch organization users for collaborators
+  useEffect(() => {
+    const fetchOrgUsers = async () => {
+      try {
+        if (user?.organization?._id) {
+          const users = await organizationsAPI.getUsers(user.organization._id);
+          setOrgUsers(users);
+        }
+      } catch (error) {
+        console.error("Error fetching organization users:", error);
+      }
+    };
+    fetchOrgUsers();
+  }, [user]);
+
+  const handleAddCollaborator = async (userId) => {
+    try {
+      const updatedProject = await projectsAPI.addCollaborator(
+        projectId,
+        userId
+      );
+      setProject(updatedProject);
+      setShowAddCollaborator(false);
+      toast.showSuccess("Collaborator added successfully");
+    } catch (error) {
+      console.error("Error adding collaborator:", error);
+      toast.showError(
+        error.response?.data?.message || "Failed to add collaborator"
+      );
+    }
+  };
+
+  const handleRemoveCollaborator = async (userId) => {
+    try {
+      const updatedProject = await projectsAPI.removeCollaborator(
+        projectId,
+        userId
+      );
+      setProject(updatedProject);
+      toast.showSuccess("Collaborator removed successfully");
+    } catch (error) {
+      console.error("Error removing collaborator:", error);
+      toast.showError(
+        error.response?.data?.message || "Failed to remove collaborator"
+      );
     }
   };
 
@@ -432,6 +484,80 @@ const ProjectDetails = () => {
                 </span>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Collaborators Card */}
+        <div className="project-detail-card">
+          <div className="card-header-with-action">
+            <h3 className="card-title">Collaborators</h3>
+            {project.createdBy?._id === user?._id && (
+              <button
+                className="add-collaborator-btn"
+                onClick={() => setShowAddCollaborator(!showAddCollaborator)}
+                title="Add collaborator"
+              >
+                +
+              </button>
+            )}
+          </div>
+
+          {showAddCollaborator && (
+            <div className="add-collaborator-dropdown">
+              {orgUsers
+                .filter(
+                  (orgUser) =>
+                    orgUser._id !== project.createdBy?._id &&
+                    !project.collaborators?.some(
+                      (collab) => collab._id === orgUser._id
+                    )
+                )
+                .map((orgUser) => (
+                  <div
+                    key={orgUser._id}
+                    className="user-option"
+                    onClick={() => handleAddCollaborator(orgUser._id)}
+                  >
+                    <div className="user-avatar-small">
+                      {orgUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span>{orgUser.name}</span>
+                  </div>
+                ))}
+              {orgUsers.filter(
+                (orgUser) =>
+                  orgUser._id !== project.createdBy?._id &&
+                  !project.collaborators?.some(
+                    (collab) => collab._id === orgUser._id
+                  )
+              ).length === 0 && <p className="no-users">No users available</p>}
+            </div>
+          )}
+
+          <div className="collaborators-list">
+            {project.collaborators && project.collaborators.length > 0 ? (
+              project.collaborators.map((collaborator) => (
+                <div key={collaborator._id} className="collaborator-item">
+                  <div className="collaborator-info">
+                    <div className="collaborator-avatar">
+                      {collaborator.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span>{collaborator.name}</span>
+                  </div>
+                  {project.createdBy?._id === user?._id && (
+                    <button
+                      className="remove-btn"
+                      onClick={() => handleRemoveCollaborator(collaborator._id)}
+                      title="Remove collaborator"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="no-collaborators">No collaborators yet</p>
+            )}
           </div>
         </div>
 

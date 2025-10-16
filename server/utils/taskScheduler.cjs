@@ -28,16 +28,16 @@ const checkOverdueTasks = async () => {
       });
 
       // Only create notification if one doesn't exist
-      if (!existingNotification) {
+      if (!existingNotification && task.assignee) {
         const notification = new Notification({
-          user: task.assignee?._id,
-          organization: task.organization,
+          user: task.assignee._id,
+          organization: task.organization._id || task.organization,
           type: "task_overdue",
-          title: "⚠️ Overdue Task",
-          message: `Task "${
+          title: `⚠️ Task Overdue: "${task.title}"`,
+          message: `Your task "${
             task.title
-          }" is overdue! Due date was ${task.dueDate.toLocaleDateString()}`,
-          link: `/projects/${task.project?._id || ""}?task=${task._id}`,
+          }" is overdue! Due date was ${task.dueDate.toLocaleDateString()}. Click to view details.`,
+          link: `/tasks`,
           relatedTask: task._id,
           isRead: false,
         });

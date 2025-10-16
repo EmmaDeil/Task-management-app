@@ -16,29 +16,8 @@ const OrganizationDashboard = ({ onNavigate }) => {
     weeklyReports: organization?.settings?.weeklyReports ?? false,
   });
 
-  const mockMembers = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john@example.com",
-      role: "admin",
-      status: "active",
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane@example.com",
-      role: "member",
-      status: "active",
-    },
-    {
-      id: 3,
-      name: "Bob Johnson",
-      email: "bob@example.com",
-      role: "member",
-      status: "pending",
-    },
-  ];
+  // Replace mockMembers with real organization members if available
+  const members = organization?.members || [];
 
   const tabs = [
     { id: "members", label: "Members" },
@@ -63,7 +42,7 @@ const OrganizationDashboard = ({ onNavigate }) => {
           <span>Actions</span>
         </div>
 
-        {mockMembers.map((member) => (
+        {members.map((member) => (
           <div key={member.id} className="table-row">
             <span className="member-name">{member.name}</span>
             <span className="member-email">{member.email}</span>

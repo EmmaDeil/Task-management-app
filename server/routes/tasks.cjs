@@ -29,6 +29,7 @@ router.get("/", protect, async (req, res) => {
     const tasks = await Task.find(query)
       .populate("assignee", "name email")
       .populate("createdBy", "name email")
+      .populate("collaborators", "name email")
       .populate("comments.user", "name email")
       .sort({ createdAt: -1 });
 
@@ -44,8 +45,9 @@ router.get("/", protect, async (req, res) => {
 router.get("/:id", protect, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
-      .populate("assignee", "name email role")
+      .populate("assignee", "name email")
       .populate("createdBy", "name email")
+      .populate("collaborators", "name email")
       .populate("comments.user", "name email");
 
     if (!task) {
@@ -80,6 +82,7 @@ router.post("/", protect, async (req, res) => {
     const populatedTask = await Task.findById(task._id)
       .populate("assignee", "name email")
       .populate("createdBy", "name email")
+      .populate("collaborators", "name email")
       .populate("comments.user", "name email");
 
     res.status(201).json(populatedTask);
@@ -112,7 +115,9 @@ router.put("/:id", protect, async (req, res) => {
       runValidators: true,
     })
       .populate("assignee", "name email")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email")
+      .populate("comments.user", "name email");
 
     res.json(task);
   } catch (error) {
@@ -182,6 +187,92 @@ router.post("/:id/comments", protect, async (req, res) => {
       "comments.user",
       "name email"
     );
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @route   POST /api/tasks/:id/collaborators
+// @desc    Add collaborator to task
+// @access  Private
+router.post("/:id/collaborators", protect, async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Check if user is assignee or creator
+    const isAuthorized =
+      task.assignee?.toString() === req.user._id.toString() ||
+      task.createdBy.toString() === req.user._id.toString();
+
+    if (!isAuthorized) {
+      return res
+        .status(403)
+        .json({ message: "Only assignee or creator can add collaborators" });
+    }
+
+    // Check if collaborator already exists
+    if (task.collaborators.includes(userId)) {
+      return res
+        .status(400)
+        .json({ message: "User is already a collaborator" });
+    }
+
+    task.collaborators.push(userId);
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate("assignee", "name email")
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email")
+      .populate("comments.user", "name email");
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @route   DELETE /api/tasks/:id/collaborators/:userId
+// @desc    Remove collaborator from task
+// @access  Private
+router.delete("/:id/collaborators/:userId", protect, async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Check if user is assignee or creator
+    const isAuthorized =
+      task.assignee?.toString() === req.user._id.toString() ||
+      task.createdBy.toString() === req.user._id.toString();
+
+    if (!isAuthorized) {
+      return res
+        .status(403)
+        .json({ message: "Only assignee or creator can remove collaborators" });
+    }
+
+    task.collaborators = task.collaborators.filter(
+      (collab) => collab.toString() !== req.params.userId
+    );
+
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate("assignee", "name email")
+      .populate("createdBy", "name email")
+      .populate("collaborators", "name email")
+      .populate("comments.user", "name email");
 
     res.json(updatedTask);
   } catch (error) {
