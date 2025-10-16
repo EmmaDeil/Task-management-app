@@ -4,12 +4,16 @@ const cookieParser = require("cookie-parser");
 const dotenv = require("dotenv");
 const path = require("path");
 const connectDB = require("./config/db.cjs");
+const { startTaskScheduler } = require("./utils/taskScheduler.cjs");
 
 // Load environment variables from server/.env
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 // Connect to MongoDB
 connectDB();
+
+// Start task scheduler for overdue tasks
+startTaskScheduler();
 
 const app = express();
 

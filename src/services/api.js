@@ -374,6 +374,11 @@ export const notificationsAPI = {
     return response.data;
   },
 
+  performAction: async (id, action) => {
+    const response = await api.put(`/notifications/${id}/action`, { action });
+    return response.data;
+  },
+
   delete: async (id) => {
     const response = await api.delete(`/notifications/${id}`);
     return response.data;

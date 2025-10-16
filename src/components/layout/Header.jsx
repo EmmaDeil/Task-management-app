@@ -25,11 +25,10 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
 
   // Fetch notifications from API
   useEffect(() => {
-    // Temporarily disabled until backend notifications endpoint is ready
-    // fetchNotifications();
+    fetchNotifications();
     // Poll for new notifications every 30 seconds
-    // const interval = setInterval(fetchNotifications, 30000);
-    // return () => clearInterval(interval);
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
@@ -206,6 +205,25 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
   const handleViewAllNotifications = () => {
     setShowNotifications(false);
     navigate("/notifications");
+  };
+
+  const handleNotificationAction = async (e, notification, action) => {
+    e.stopPropagation(); // Prevent notification click
+    try {
+      await notificationsAPI.performAction(notification._id, action);
+
+      // Refresh notifications
+      fetchNotifications();
+
+      // Show success message based on action
+      if (action === "complete") {
+        console.log("✅ Task marked as complete");
+      } else if (action === "dismiss") {
+        console.log("✅ Notification dismissed");
+      }
+    } catch (err) {
+      console.error("Error performing notification action:", err);
+    }
   };
 
   const getTimeAgo = (date) => {
@@ -464,6 +482,8 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                         key={notification._id}
                         className={`notification-item ${
                           notification.isRead ? "" : "unread"
+                        } ${
+                          notification.type === "task_overdue" ? "overdue" : ""
                         }`}
                         onClick={() => handleNotificationClick(notification)}
                         role="button"
@@ -474,8 +494,43 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
                           }
                         }}
                       >
-                        <p>{notification.title || notification.message}</p>
-                        <small>{getTimeAgo(notification.createdAt)}</small>
+                        <div className="notification-content">
+                          <p>{notification.title || notification.message}</p>
+                          <small>{getTimeAgo(notification.createdAt)}</small>
+                        </div>
+
+                        {/* Show action buttons for overdue tasks */}
+                        {notification.type === "task_overdue" &&
+                          notification.relatedTask && (
+                            <div className="notification-actions">
+                              <button
+                                className="action-btn complete-btn"
+                                onClick={(e) =>
+                                  handleNotificationAction(
+                                    e,
+                                    notification,
+                                    "complete"
+                                  )
+                                }
+                                title="Mark task as complete"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                className="action-btn dismiss-btn"
+                                onClick={(e) =>
+                                  handleNotificationAction(
+                                    e,
+                                    notification,
+                                    "dismiss"
+                                  )
+                                }
+                                title="Dismiss notification"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
                       </div>
                     ))
                   ) : (

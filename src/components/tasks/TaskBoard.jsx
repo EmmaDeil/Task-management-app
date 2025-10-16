@@ -18,6 +18,10 @@ const TaskBoard = () => {
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterAssignee, setFilterAssignee] = useState("all");
   const [draggedTask, setDraggedTask] = useState(null);
+  const [viewMode, setViewMode] = useState(() => {
+    // Load saved view preference from localStorage
+    return localStorage.getItem("taskViewMode") || "grid";
+  });
 
   // Fetch tasks from API
   useEffect(() => {
@@ -131,6 +135,12 @@ const TaskBoard = () => {
     setShowTaskForm(true);
   };
 
+  const toggleViewMode = () => {
+    const newMode = viewMode === "grid" ? "list" : "grid";
+    setViewMode(newMode);
+    localStorage.setItem("taskViewMode", newMode);
+  };
+
   // Drag and drop handlers
   const handleDragStart = (e, task) => {
     setDraggedTask(task);
@@ -192,6 +202,16 @@ const TaskBoard = () => {
       <div className="board-header">
         <h2>{user?.name ? `${user.name}'s Task Board` : "Task Board"}</h2>
         <div className="board-actions">
+          <button
+            className="btn secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleViewMode();
+            }}
+            title={`Switch to ${viewMode === "grid" ? "list" : "grid"} view`}
+          >
+            {viewMode === "grid" ? "☰ List View" : "⊞ Grid View"}
+          </button>
           <button
             className="btn secondary"
             onClick={(e) => {
@@ -271,61 +291,112 @@ const TaskBoard = () => {
         </div>
       )}
 
-      <div className="board-columns">
-        {columns.map((column) => (
-          <div
-            key={column.id}
-            className="board-column"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, column.id)}
-          >
+      <div
+        className={`board-columns ${
+          viewMode === "list" ? "list-view" : "grid-view"
+        }`}
+      >
+        {viewMode === "grid" ? (
+          // Grid View (Kanban Board)
+          columns.map((column) => (
             <div
-              className="column-header"
-              style={{ backgroundColor: column.color }}
+              key={column.id}
+              className="board-column"
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, column.id)}
             >
-              <h3>{column.title}</h3>
-              <span className="task-count">
-                {getTasksByStatus(column.id).length}
-              </span>
-              <button
-                className="add-task-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openTaskForm(column.id);
-                }}
-                title="Add task"
+              <div
+                className="column-header"
+                style={{ backgroundColor: column.color }}
               >
-                +
-              </button>
-            </div>
-
-            <div className="column-tasks">
-              {getTasksByStatus(column.id).map((task) => (
-                <div
-                  key={task._id}
-                  draggable="true"
-                  onDragStart={(e) => handleDragStart(e, task)}
-                  onDragEnd={handleDragEnd}
-                  style={{ cursor: "move" }}
+                <h3>{column.title}</h3>
+                <span className="task-count">
+                  {getTasksByStatus(column.id).length}
+                </span>
+                <button
+                  className="add-task-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTaskForm(column.id);
+                  }}
+                  title="Add task"
                 >
-                  <TaskCard
-                    task={task}
-                    onMove={handleTaskMove}
-                    onUpdate={handleTaskUpdate}
-                    onDelete={handleTaskDelete}
-                    columns={columns}
-                  />
-                </div>
-              ))}
+                  +
+                </button>
+              </div>
 
-              {getTasksByStatus(column.id).length === 0 && (
-                <div className="empty-column">
-                  <p>No tasks in {column.title.toLowerCase()}</p>
+              <div className="column-tasks">
+                {getTasksByStatus(column.id).map((task) => (
+                  <div
+                    key={task._id}
+                    draggable="true"
+                    onDragStart={(e) => handleDragStart(e, task)}
+                    onDragEnd={handleDragEnd}
+                    style={{ cursor: "move" }}
+                  >
+                    <TaskCard
+                      task={task}
+                      onMove={handleTaskMove}
+                      onUpdate={handleTaskUpdate}
+                      onDelete={handleTaskDelete}
+                      columns={columns}
+                    />
+                  </div>
+                ))}
+
+                {getTasksByStatus(column.id).length === 0 && (
+                  <div className="empty-column">
+                    <p>No tasks in {column.title.toLowerCase()}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          // List View (All tasks in one column)
+          <div className="task-list-container">
+            <div className="list-view-header">
+              <h3>All Tasks ({tasks.length})</h3>
+            </div>
+            <div className="task-list">
+              {tasks
+                .filter((task) => {
+                  // Apply same filters
+                  if (
+                    filterPriority !== "all" &&
+                    task.priority !== filterPriority
+                  ) {
+                    return false;
+                  }
+                  if (
+                    filterAssignee !== "all" &&
+                    task.assignee?._id !== filterAssignee
+                  ) {
+                    return false;
+                  }
+                  return true;
+                })
+                .map((task) => (
+                  <div key={task._id} className="list-task-item">
+                    <TaskCard
+                      task={task}
+                      onMove={handleTaskMove}
+                      onUpdate={handleTaskUpdate}
+                      onDelete={handleTaskDelete}
+                      columns={columns}
+                      viewMode="list"
+                    />
+                  </div>
+                ))}
+
+              {tasks.length === 0 && (
+                <div className="empty-list">
+                  <p>No tasks found</p>
                 </div>
               )}
             </div>
           </div>
-        ))}
+        )}
       </div>
 
       {showTaskForm && (

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import TaskForm from "./TaskForm";
-import { useAuth } from "../../hooks/useAuth";
+import { tasksAPI } from "../../services/api";
+import { useToast } from "../../hooks/useToast";
 
 const TaskDetails = ({
   task,
@@ -10,9 +11,10 @@ const TaskDetails = ({
   onMove,
   columns,
 }) => {
-  const { user } = useAuth();
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isAddingComment, setIsAddingComment] = useState(false);
 
   // Safely initialize comments, ensuring they have proper structure
   const [comments, setComments] = useState(() => {
@@ -99,25 +101,33 @@ const TaskDetails = ({
     onMove(taskId, newStatus);
   };
 
-  const handleAddComment = (e) => {
+  const handleAddComment = async (e) => {
     e.preventDefault();
     if (newComment.trim() === "") return;
 
-    const comment = {
-      id: Date.now(),
-      author: user?.name || user?.username || user?.email || "Anonymous User",
-      text: newComment,
-      timestamp: new Date().toISOString(),
-    };
+    setIsAddingComment(true);
 
-    const updatedComments = [...comments, comment];
-    setComments(updatedComments);
+    try {
+      // Call backend API to add comment
+      const taskId = task._id || task.id;
+      const updatedTask = await tasksAPI.addComment(taskId, newComment);
 
-    // Update task with new comments
-    const taskId = task._id || task.id;
-    onUpdate(taskId, { ...task, comments: updatedComments });
+      // Update comments with the response from backend
+      // The backend returns the full task with populated comments
+      if (updatedTask.comments) {
+        setComments(updatedTask.comments);
+      }
 
-    setNewComment("");
+      // Clear input
+      setNewComment("");
+
+      toast.showSuccess("Comment added successfully");
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.showError("Failed to add comment. Please try again.");
+    } finally {
+      setIsAddingComment(false);
+    }
   };
 
   const getTimeAgo = (timestamp) => {
@@ -431,9 +441,9 @@ const TaskDetails = ({
                 <button
                   type="submit"
                   className="btn primary comment-submit-btn"
-                  disabled={!newComment.trim()}
+                  disabled={!newComment.trim() || isAddingComment}
                 >
-                  Post Comment
+                  {isAddingComment ? "Posting..." : "Post Comment"}
                 </button>
               </form>
 
@@ -445,7 +455,10 @@ const TaskDetails = ({
                   </p>
                 ) : (
                   comments.map((comment) => (
-                    <div key={comment.id} className="comment-item">
+                    <div
+                      key={comment._id || comment.id}
+                      className="comment-item"
+                    >
                       <div className="comment-header">
                         <div className="comment-author">
                           <div className="comment-avatar">

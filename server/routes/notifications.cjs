@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Notification = require("../models/Notification.cjs");
+const Task = require("../models/Task.cjs");
 const { protect } = require("../middleware/auth.cjs");
 
 // @route   GET /api/notifications
@@ -156,6 +157,54 @@ router.post("/create", protect, async (req, res) => {
     });
 
     res.status(201).json(notification);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @route   PUT /api/notifications/:id/action
+// @desc    Perform action on notification (mark task complete, dismiss, etc.)
+// @access  Private
+router.put("/:id/action", protect, async (req, res) => {
+  try {
+    const { action } = req.body; // "complete" or "dismiss"
+
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    // Mark notification as read
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    // Handle specific actions
+    if (action === "complete" && notification.relatedTask) {
+      // Mark the related task as complete
+      const task = await Task.findById(notification.relatedTask);
+      if (task) {
+        task.status = "done";
+        await task.save();
+        return res.json({
+          message: "Task marked as complete",
+          notification,
+          task,
+        });
+      }
+    } else if (action === "dismiss") {
+      // Just dismiss the notification (already marked as read above)
+      return res.json({
+        message: "Notification dismissed",
+        notification,
+      });
+    }
+
+    res.json({ notification });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

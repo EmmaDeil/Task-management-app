@@ -29,6 +29,7 @@ router.get("/", protect, async (req, res) => {
     const tasks = await Task.find(query)
       .populate("assignee", "name email")
       .populate("createdBy", "name email")
+      .populate("comments.user", "name email")
       .sort({ createdAt: -1 });
 
     res.json(tasks);
@@ -78,7 +79,8 @@ router.post("/", protect, async (req, res) => {
     const task = await Task.create(taskData);
     const populatedTask = await Task.findById(task._id)
       .populate("assignee", "name email")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("comments.user", "name email");
 
     res.status(201).json(populatedTask);
   } catch (error) {
