@@ -286,7 +286,6 @@ const Header = ({ onSidebarToggle, isSidebarOpen }) => {
               </button>
             )}
             <button type="submit" className="search-btn" aria-label="Search">
-              🔍
             </button>
           </form>
 

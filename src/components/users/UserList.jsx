@@ -139,7 +139,10 @@ const UserList = () => {
   return (
     <div className="user-list">
       <div className="user-list-header">
-        <h2>{filteredUsers.length} Member</h2>
+        <h2>
+          {filteredUsers.length}{" "}
+          {filteredUsers.length === 1 ? "Member" : "Members"}
+        </h2>
         {canManageUsers && (
           <button
             className="btn primary"
@@ -175,7 +178,10 @@ const UserList = () => {
 
       {selectedUsers.length > 0 && canManageUsers && (
         <div className="bulk-actions">
-          <span>{selectedUsers.length} users selected</span>
+          <span>
+            {selectedUsers.length}{" "}
+            {selectedUsers.length === 1 ? "user" : "users"} selected
+          </span>
           <div className="bulk-buttons">
             <button
               onClick={() => handleBulkAction("deactivate")}
@@ -227,7 +233,8 @@ const UserList = () => {
                   {userItem.role || "member"}
                 </span>
                 <span className="tasks-count">
-                  {userItem.tasksCount || 0} tasks
+                  {userItem.tasksCount || 0}{" "}
+                  {(userItem.tasksCount || 0) === 1 ? "task" : "tasks"}
                 </span>
               </div>
 

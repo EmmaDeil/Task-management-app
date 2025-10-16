@@ -21,15 +21,15 @@ const OrganizationDashboard = ({ onNavigate }) => {
 
   const tabs = [
     { id: "members", label: "Members" },
-    { id: "settings", label: "Settings" },
+    { id: "settings", label: "Settings" }
   ];
 
   const renderMembers = () => (
-    <div className="org-members">
+    <div className="org-members" style={{}}>
       <div className="members-header">
         <h3>Team Members</h3>
         <button className="btn primary" onClick={() => onNavigate("invite")}>
-          Invite Members
+          Manage Team
         </button>
       </div>
 

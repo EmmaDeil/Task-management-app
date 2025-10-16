@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User.cjs");
+const Task = require("../models/Task.cjs");
 const File = require("../models/File.cjs");
 const { protect, authorize } = require("../middleware/auth.cjs");
 
@@ -13,7 +14,21 @@ router.get("/", protect, async (req, res) => {
       .select("-password")
       .sort({ name: 1 });
 
-    res.json(users);
+    // Get task counts for each user
+    const usersWithTaskCounts = await Promise.all(
+      users.map(async (user) => {
+        const taskCount = await Task.countDocuments({
+          assignee: user._id,
+          organization: req.user.organization._id,
+        });
+        return {
+          ...user.toObject(),
+          tasksCount: taskCount,
+        };
+      })
+    );
+
+    res.json(usersWithTaskCounts);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
-import { usersAPI, authAPI, tasksAPI } from "../../services/api";
+import { usersAPI, authAPI, tasksAPI, projectsAPI } from "../../services/api";
 import { getImageUrl } from "../../utils/imageUtils";
 import {
   handleError,
@@ -39,32 +39,45 @@ const UserProfile = () => {
         const tasks = await tasksAPI.getAll();
         const tasksArray = Array.isArray(tasks) ? tasks : [];
 
-        // Filter tasks for current user
+        // Fetch all projects
+        const projects = await projectsAPI.getAll();
+        const projectsArray = Array.isArray(projects) ? projects : [];
+
+        // Filter tasks for current user (tasks assigned to them)
         const myTasks = tasksArray.filter((task) => {
-          const taskAssignee =
-            typeof task.assignedTo === "object"
-              ? task.assignedTo?._id
-              : task.assignedTo;
-          return (
-            task.assignee === user?.name ||
-            taskAssignee === user?.id ||
-            taskAssignee === user?._id
-          );
+          const taskAssigneeId =
+            typeof task.assignee === "object"
+              ? task.assignee?._id
+              : task.assignee;
+          return taskAssigneeId === user?.id || taskAssigneeId === user?._id;
+        });
+
+        // Filter projects for current user (projects created by them or where they're a collaborator)
+        const myProjects = projectsArray.filter((project) => {
+          const projectCreatorId =
+            typeof project.createdBy === "object"
+              ? project.createdBy?._id
+              : project.createdBy;
+          const isCreator =
+            projectCreatorId === user?.id || projectCreatorId === user?._id;
+
+          // Check if user is a collaborator
+          const isCollaborator = project.collaborators?.some((collab) => {
+            const collabId = typeof collab === "object" ? collab?._id : collab;
+            return collabId === user?.id || collabId === user?._id;
+          });
+
+          return isCreator || isCollaborator;
         });
 
         // Calculate statistics
         const completed = myTasks.filter((task) => task.status === "done");
         const active = myTasks.filter((task) => task.status !== "done");
 
-        // Get unique project IDs
-        const projectIds = new Set(
-          myTasks.map((task) => task.projectId).filter(Boolean)
-        );
-
         setUserStats({
           completedTasks: completed.length,
           activeTasks: active.length,
-          totalProjects: projectIds.size,
+          totalProjects: myProjects.length,
         });
 
         // Get recent tasks (last 3)
@@ -106,21 +119,21 @@ const UserProfile = () => {
   const handleSave = async () => {
     try {
       // Update user profile via API
-      await usersAPI.update(user?.id || user?._id, {
+      const updatedUser = await usersAPI.update(user?.id || user?._id, {
         name: formData.name,
         bio: formData.bio,
         department: formData.department,
         phoneNumber: formData.phoneNumber,
       });
 
-      // Update local storage and context
+      // Update local storage and context with the response from the server
       const authData = JSON.parse(localStorage.getItem("auth") || "{}");
       authData.user = {
         ...authData.user,
-        name: formData.name,
-        bio: formData.bio,
-        department: formData.department,
-        phoneNumber: formData.phoneNumber,
+        name: updatedUser.name,
+        bio: updatedUser.bio,
+        department: updatedUser.department,
+        phoneNumber: updatedUser.phoneNumber,
       };
       localStorage.setItem("auth", JSON.stringify(authData));
       login(authData.user, organization);
@@ -137,9 +150,9 @@ const UserProfile = () => {
     setFormData({
       name: user?.name || "",
       email: user?.email || "",
-      bio: "",
-      department: "",
-      phoneNumber: "",
+      bio: user?.bio || "",
+      department: user?.department || "",
+      phoneNumber: user?.phoneNumber || "",
     });
     setIsEditing(false);
   };
@@ -328,15 +341,23 @@ const UserProfile = () => {
             <div className="activity-stats">
               <div className="stat-item">
                 <span className="stat-value">{userStats.completedTasks}</span>
-                <span className="stat-label">Tasks Completed</span>
+                <span className="stat-label">
+                  {userStats.completedTasks === 1
+                    ? "Tasks Completed"
+                    : "Task Completed"}
+                </span>
               </div>
               <div className="stat-item">
                 <span className="stat-value">{userStats.activeTasks}</span>
-                <span className="stat-label">Active Tasks</span>
+                <span className="stat-label">
+                  {userStats.activeTasks === 1 ? "Active Task" : "Active Tasks"}
+                </span>
               </div>
               <div className="stat-item">
                 <span className="stat-value">{userStats.totalProjects}</span>
-                <span className="stat-label">Projects</span>
+                <span className="stat-label">
+                  {userStats.totalProjects === 1 ? "Project" : "Projects"}
+                </span>
               </div>
             </div>
           )}
