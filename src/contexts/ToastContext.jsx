@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Toast from "../components/common/Toast";
 import { ToastContext } from "./ToastContextDefinition";
 
@@ -6,8 +7,26 @@ let toastId = 0;
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
+  const [portalRoot, setPortalRoot] = useState(null);
+
+  // Create a portal container in the body on mount
+  useEffect(() => {
+    const portalDiv = document.createElement("div");
+    portalDiv.id = "toast-portal";
+    document.body.appendChild(portalDiv);
+    setPortalRoot(portalDiv);
+    console.log("Toast portal created and added to body");
+
+    return () => {
+      if (document.body.contains(portalDiv)) {
+        document.body.removeChild(portalDiv);
+        console.log("Toast portal removed from body");
+      }
+    };
+  }, []);
 
   const showToast = useCallback((message, type = "info", duration = 3000) => {
+    console.log("showToast called:", { message, type, duration });
     // Check if a toast with the same message and type already exists
     setToasts((prev) => {
       const isDuplicate = prev.some(
@@ -16,10 +35,12 @@ export const ToastProvider = ({ children }) => {
 
       // Don't add duplicate toasts
       if (isDuplicate) {
+        console.log("Duplicate toast prevented:", message);
         return prev;
       }
 
       const id = toastId++;
+      console.log("Adding new toast:", { id, message, type });
       return [...prev, { id, message, type, duration }];
     });
   }, []);
@@ -48,22 +69,30 @@ export const ToastProvider = ({ children }) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
+  // Render toast container in portal (outside the normal DOM hierarchy)
+  const toastContainer = portalRoot
+    ? createPortal(
+        <div className="toast-container">
+          {toasts.map((toast) => (
+            <Toast
+              key={toast.id}
+              message={toast.message}
+              type={toast.type}
+              duration={toast.duration}
+              onClose={() => removeToast(toast.id)}
+            />
+          ))}
+        </div>,
+        portalRoot
+      )
+    : null;
+
   return (
     <ToastContext.Provider
       value={{ showToast, showSuccess, showError, showWarning, showInfo }}
     >
       {children}
-      <div className="toast-container">
-        {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            duration={toast.duration}
-            onClose={() => removeToast(toast.id)}
-          />
-        ))}
-      </div>
+      {toastContainer}
     </ToastContext.Provider>
   );
 };

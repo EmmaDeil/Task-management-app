@@ -17,6 +17,7 @@ const Calendar = () => {
 
   // Get tasks from Redux store
   const tasks = useSelector((state) => state.tasks.items);
+  const projects = useSelector((state) => state.projects.items);
   const dispatch = useDispatch();
 
   // Fetch holidays from Calendarific API (free tier)
@@ -84,13 +85,28 @@ const Calendar = () => {
         description: task.description,
       }));
 
-    // Merge task events with custom events
+    // Convert projects to calendar events (using deadline/endDate)
+    const projectEvents = projects
+      .filter((project) => project.endDate || project.deadline) // Projects with deadlines
+      .map((project) => ({
+        id: `project-${project._id || project.id}`,
+        title: `📋 ${project.name}`,
+        date: new Date(project.endDate || project.deadline),
+        type: "project",
+        projectData: project,
+        color: "#8b5cf6", // Purple for projects
+        description: project.description,
+      }));
+
+    // Merge task events, project events, and custom events
     setEvents((prevEvents) => {
-      // Filter out old task events
-      const customEvents = prevEvents.filter((e) => e.type !== "task");
-      return [...customEvents, ...taskEvents];
+      // Filter out old task and project events
+      const customEvents = prevEvents.filter(
+        (e) => e.type !== "task" && e.type !== "project"
+      );
+      return [...customEvents, ...taskEvents, ...projectEvents];
     });
-  }, [tasks]);
+  }, [tasks, projects]);
 
   // Get days in month
   const getDaysInMonth = (date) => {
@@ -209,7 +225,9 @@ const Calendar = () => {
       );
     } else {
       // For non-task events, save to localStorage
-      const customEvents = events.filter((e) => e.type !== "task");
+      const customEvents = events.filter(
+        (e) => e.type !== "task" && e.type !== "project"
+      );
       const updatedEvents = [...customEvents, newEvent];
       localStorage.setItem(
         "calendar_events",
